@@ -10,7 +10,7 @@ import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 
 @Mod(modid = Globe.MOD_ID, name = Globe.MOD_NAME,
         version = Globe.VERSION,
-        dependencies = "required-after:forge@[14.23.2.2611,)",
+        dependencies = "required-after:forge@[14.23.2.2638,)",
         acceptedMinecraftVersions = "[1.12,1.13)"
 )
 public class Globe

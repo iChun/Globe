@@ -30,6 +30,8 @@ public class EventHandlerServer
 
         Globe.itemGlobe = new ItemGlobe();
         event.getRegistry().register(Globe.itemGlobe);
+
+        Globe.proxy.applyItemRenderers();
     }
 
 }

@@ -5,6 +5,8 @@ import net.minecraft.network.NetworkManager;
 import net.minecraft.network.play.server.SPacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ITickable;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
@@ -20,6 +22,13 @@ public class TileEntityGlobeStand extends TileEntity implements ITickable
 
     public TileEntityGlobeStand()
     {
+    }
+
+    public TileEntityGlobeStand(World world, NBTTagCompound tag)
+    {
+        this.world = world;
+        this.itemTag = tag;
+        this.pos = BlockPos.ORIGIN;
     }
 
     @Override

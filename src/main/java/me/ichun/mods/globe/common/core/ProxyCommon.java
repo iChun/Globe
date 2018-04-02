@@ -16,4 +16,6 @@ public class ProxyCommon
         GameRegistry.registerTileEntity(TileEntityGlobeCreator.class, "globe_globeCreator");
         GameRegistry.registerTileEntity(TileEntityGlobeStand.class, "globe_globeStand");
     }
+
+    public void applyItemRenderers(){}
 }

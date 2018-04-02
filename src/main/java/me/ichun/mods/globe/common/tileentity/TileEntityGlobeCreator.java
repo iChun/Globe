@@ -25,7 +25,6 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
 
     public TileEntityGlobeCreator()
     {
-        hasGlobe = true;
         timeToGlobe = -1;
     }
 
