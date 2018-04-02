@@ -1,0 +1,21 @@
+[
+{
+  "modid" : "globe",
+  "name" : "Globe",
+  "version" : "${version}",
+  "url" : "http://ichun.me/mods/globe/",
+  "credits" : "",
+  "authorList": [
+    "iChun"
+  ],
+  "description": "Globe - verb - form (something) into a globe",
+  "logoFile" : "",
+  "updateUrl" : "",
+  "parent" : "",
+  "screenshots": [
+  ],
+  "dependencies": [
+    "Forge"
+  ]
+}
+]
