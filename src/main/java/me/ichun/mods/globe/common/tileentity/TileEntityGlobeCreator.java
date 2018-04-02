@@ -1,0 +1,138 @@
+package me.ichun.mods.globe.common.tileentity;
+
+import me.ichun.mods.globe.common.Globe;
+import net.minecraft.block.Block;
+import net.minecraft.block.material.Material;
+import net.minecraft.block.state.IBlockState;
+import net.minecraft.entity.item.EntityItem;
+import net.minecraft.init.Blocks;
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.network.NetworkManager;
+import net.minecraft.network.play.server.SPacketUpdateTileEntity;
+import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.ITickable;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.math.BlockPos;
+import org.apache.commons.lang3.RandomStringUtils;
+
+import javax.annotation.Nullable;
+
+public class TileEntityGlobeCreator extends TileEntity implements ITickable
+{
+    public boolean hasGlobe;
+    public int timeToGlobe;
+
+    public TileEntityGlobeCreator()
+    {
+        hasGlobe = true;
+        timeToGlobe = -1;
+    }
+
+    @Override
+    public void update()
+    {
+        if(timeToGlobe > 0)
+        {
+            timeToGlobe--;
+            if(timeToGlobe == 0)
+            {
+                //TODO do stuff
+                if(!world.isRemote)
+                {
+                    world.setBlockToAir(pos);
+
+                    //TODO animals?
+
+                    ItemStack is = new ItemStack(Globe.itemGlobe, 1, 1);
+                    NBTTagCompound tag = new NBTTagCompound();
+                    tag.setString("identification", RandomStringUtils.randomAlphanumeric(20));
+                    tag.setLong("source", getPos().toLong());
+
+                    int radius = 5;
+
+                    tag.setInteger("radius", radius);
+                    for(int x = -radius; x <= radius; x++)
+                    {
+                        for(int y = -radius; y <= radius; y++)
+                        {
+                            for(int z = -radius; z <= radius; z++)
+                            {
+                                if(x == 0 && y == 0 && z == 0)
+                                {
+                                    continue;
+                                }
+                                BlockPos refPos = getPos().add(x, y, z);
+                                IBlockState state = world.getBlockState(refPos);
+                                if(!(state.getMaterial() == Material.AIR || state.getBlockHardness(world, refPos) < 0))
+                                {
+                                    StringBuilder sb = new StringBuilder().append("x").append(x).append("y").append(y).append("z").append(z);
+                                    String coord = sb.toString();
+                                    NBTTagCompound coordTag = new NBTTagCompound();
+                                    Block block = state.getBlock();
+                                    ResourceLocation resourcelocation = Block.REGISTRY.getNameForObject(block);
+                                    coordTag.setString("Block", resourcelocation.toString());
+                                    coordTag.setByte("Data", (byte)state.getBlock().getMetaFromState(state));
+                                    if(block.hasTileEntity(state))
+                                    {
+                                        TileEntity te = world.getTileEntity(refPos);
+                                        if(te != null)
+                                        {
+                                            coordTag.setTag("TileEntityData", te.writeToNBT(new NBTTagCompound())); //TODO might have to change the xyz in the NBT;
+                                        }
+                                    }
+                                    tag.setTag(coord, coordTag);
+                                }
+                            }
+                        }
+                    }
+
+                    is.setTagCompound(tag);
+
+                    EntityItem entityitem = new EntityItem(this.world, getPos().getX() + 0.5D, getPos().getY() + 0.5D, getPos().getZ() + 0.5D, is);
+                    entityitem.setPickupDelay(40);
+                    world.spawnEntity(entityitem);
+                }
+
+                timeToGlobe = -1; //TODO remove this
+            }
+        }
+    }
+
+    @Override
+    @Nullable
+    public SPacketUpdateTileEntity getUpdatePacket()
+    {
+        return new SPacketUpdateTileEntity(this.pos, 0, this.getUpdateTag());
+    }
+
+    @Override
+    public NBTTagCompound getUpdateTag()
+    {
+        return this.writeToNBT(new NBTTagCompound());
+    }
+
+    @Override
+    public void onDataPacket(NetworkManager net, SPacketUpdateTileEntity pkt)
+    {
+        //TODO do trigger read.
+        this.readFromNBT(pkt.getNbtCompound());
+    }
+
+    @Override
+    public NBTTagCompound writeToNBT(NBTTagCompound tag)
+    {
+        super.writeToNBT(tag);
+        tag.setBoolean("hasGlobe", hasGlobe);
+        tag.setInteger("timeToGlobe", timeToGlobe);
+        return tag;
+    }
+
+    @Override
+    public void readFromNBT(NBTTagCompound tag)
+    {
+        super.readFromNBT(tag);
+        hasGlobe = tag.getBoolean("hasGlobe");
+        timeToGlobe = tag.getInteger("timeToGlobe");
+    }
+}
