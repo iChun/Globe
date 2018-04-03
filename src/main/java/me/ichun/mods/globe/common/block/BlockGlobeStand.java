@@ -10,12 +10,14 @@ import net.minecraft.block.state.IBlockState;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
+import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.*;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.RayTraceResult;
 import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 
@@ -172,47 +174,90 @@ public class BlockGlobeStand extends Block implements ITileEntityProvider
         if(te instanceof TileEntityGlobeStand)
         {
             TileEntityGlobeStand gs = (TileEntityGlobeStand)te; //TODO snow?
-            if(gs.isStand && gs.itemTag != null) // interact!
+            if(gs.itemTag != null)
             {
-                gs.bobAmp = (playerIn.rotationPitch < 0 ? -10F : 10F) + playerIn.rotationPitch / 10F;
-
-                float x = -MathHelper.sin(playerIn.rotationYaw * 0.017453292F) * MathHelper.cos(playerIn.rotationPitch * 0.017453292F);
-                float y = -MathHelper.sin((playerIn.rotationPitch) * 0.017453292F);
-                float z = MathHelper.cos(playerIn.rotationYaw * 0.017453292F) * MathHelper.cos(playerIn.rotationPitch * 0.017453292F);
-                float f = MathHelper.sqrt(x * x + y * y + z * z);
-                x = x / f * 0.2F;
-                z = z / f * 0.2F;
-
-                gs.rubberbandX = x;
-                gs.rubberbandZ = z;
-
-                if(facing.getAxis() == Z)
+                boolean flag = false;
+                ItemStack is = playerIn.getHeldItem(hand);
+                if(is.getItem() instanceof ItemBlock)
                 {
-                    float rot = (float)(hitX - 0.5D) * facing.getFrontOffsetZ() * 10F;
-                    if(rot < 0 && gs.rotateFactor > 0 || rot > 0 && gs.rotateFactor < 0)
+                    Block block = ((ItemBlock)is.getItem()).getBlock();
+                    if(block == Blocks.GLASS || block == Blocks.STAINED_GLASS)
                     {
-                        gs.rotateFactor *= 0.7F;
-                    }
-                    gs.rotateFactor += rot;
-                }
-                else if(facing.getAxis() == X)
-                {
-                    float rot = (float)(hitZ - 0.5D) * -facing.getFrontOffsetX() * 10F;
-                    if(rot < 0 && gs.rotateFactor > 0 || rot > 0 && gs.rotateFactor < 0)
-                    {
-                        gs.rotateFactor *= 0.7F;
-                    }
-                    gs.rotateFactor += rot;
-                }
-                if(Math.abs(gs.rotateFactor) > 30F)
-                {
-                    gs.rotateFactor = gs.rotateFactor < 0 ? -30F : 30F;
-                }
+                        if(block == Blocks.GLASS)
+                        {
+                            gs.itemTag.removeTag("glassType");
+                        }
+                        else
+                        {
+                            gs.itemTag.setInteger("glassType", is.getItemDamage());
+                        }
+                        world.notifyBlockUpdate(pos, state, state, 3);
 
-                return true;
+                        flag = true;
+                    }
+                }
+                if(gs.isStand) // interact!
+                {
+                    gs.bobAmp = (playerIn.rotationPitch < 0 ? -10F : 10F) + playerIn.rotationPitch / 10F;
+
+                    float x = -MathHelper.sin(playerIn.rotationYaw * 0.017453292F) * MathHelper.cos(playerIn.rotationPitch * 0.017453292F);
+                    float y = -MathHelper.sin((playerIn.rotationPitch) * 0.017453292F);
+                    float z = MathHelper.cos(playerIn.rotationYaw * 0.017453292F) * MathHelper.cos(playerIn.rotationPitch * 0.017453292F);
+                    float f = MathHelper.sqrt(x * x + y * y + z * z);
+                    x = x / f * 0.2F;
+                    z = z / f * 0.2F;
+
+                    gs.rubberbandX = x;
+                    gs.rubberbandZ = z;
+
+                    if(facing.getAxis() == Z)
+                    {
+                        float rot = (float)(hitX - 0.5D) * facing.getFrontOffsetZ() * 10F;
+                        if(rot < 0 && gs.rotateFactor > 0 || rot > 0 && gs.rotateFactor < 0)
+                        {
+                            gs.rotateFactor *= 0.7F;
+                        }
+                        gs.rotateFactor += rot;
+                    }
+                    else if(facing.getAxis() == X)
+                    {
+                        float rot = (float)(hitZ - 0.5D) * -facing.getFrontOffsetX() * 10F;
+                        if(rot < 0 && gs.rotateFactor > 0 || rot > 0 && gs.rotateFactor < 0)
+                        {
+                            gs.rotateFactor *= 0.7F;
+                        }
+                        gs.rotateFactor += rot;
+                    }
+                    if(Math.abs(gs.rotateFactor) > 30F)
+                    {
+                        gs.rotateFactor = gs.rotateFactor < 0 ? -30F : 30F;
+                    }
+                    flag = true;
+                }
+                return flag;
             }
         }
         return false;
+    }
+
+    @Override
+    public ItemStack getPickBlock(IBlockState state, RayTraceResult target, World world, BlockPos pos, EntityPlayer player)
+    {
+        TileEntity te = world.getTileEntity(pos);
+        if(te instanceof TileEntityGlobeStand)
+        {
+            TileEntityGlobeStand gs = (TileEntityGlobeStand)te;
+            if(gs.itemTag != null)
+            {
+                ItemStack is = new ItemStack(Globe.itemGlobe, 1, gs.itemTag.hasNoTags() ? 0 : 1);
+                if(!gs.itemTag.hasNoTags())
+                {
+                    is.setTagCompound(gs.itemTag);
+                }
+                return is;
+            }
+        }
+        return getItem(world, pos, state);
     }
 
     @Override
@@ -249,7 +294,7 @@ public class BlockGlobeStand extends Block implements ITileEntityProvider
     }
 
     @Override
-    public void breakBlock(World worldIn, BlockPos pos, IBlockState state) //TODO test canRenderBreaking()
+    public void breakBlock(World worldIn, BlockPos pos, IBlockState state)
     {
         super.breakBlock(worldIn, pos, state);
         worldIn.removeTileEntity(pos);

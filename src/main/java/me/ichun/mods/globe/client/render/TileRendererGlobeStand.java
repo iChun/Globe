@@ -5,6 +5,7 @@ import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.minecraft.MinecraftSessionService;
 import com.mojang.authlib.properties.Property;
 import com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService;
+import me.ichun.mods.globe.client.core.EventHandlerClient;
 import me.ichun.mods.globe.client.model.ModelGlobeStand;
 import me.ichun.mods.globe.client.model.ModelStand;
 import me.ichun.mods.globe.common.tileentity.TileEntityGlobeStand;
@@ -38,6 +39,8 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.World;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.UUID;
@@ -147,19 +150,25 @@ public class TileRendererGlobeStand extends TileEntitySpecialRenderer<TileEntity
 
                         GlStateManager.pushMatrix();
 
-                        if(state.getRenderType() == EnumBlockRenderType.MODEL && state.getRenderType() != EnumBlockRenderType.INVISIBLE) //todo fix liquids
+                        if(state.getRenderType() != EnumBlockRenderType.INVISIBLE)
                         {
                             Minecraft.getMinecraft().getTextureManager().bindTexture(TextureMap.LOCATION_BLOCKS_TEXTURE);
                             GlStateManager.disableLighting();
                             Tessellator tessellator = Tessellator.getInstance();
                             BufferBuilder bufferbuilder = tessellator.getBuffer();
-
-                            bufferbuilder.begin(7, DefaultVertexFormats.BLOCK);
-                            GlStateManager.translate((float)(x - (double)gsPos.getX() - 0.5D), (float)(y - (double)gsPos.getY()), (float)(z - (double)gsPos.getZ() - 0.5D));
                             BlockRendererDispatcher blockrendererdispatcher = Minecraft.getMinecraft().getBlockRendererDispatcher();
-                            blockrendererdispatcher.getBlockModelRenderer().renderModel(world, blockrendererdispatcher.getModelForState(state), state, gsPos, bufferbuilder, false, MathHelper.getPositionRandom(BlockPos.fromLong(gsTag.getLong("source"))));
+                            bufferbuilder.begin(7, DefaultVertexFormats.BLOCK);
+                            if(state.getRenderType() == EnumBlockRenderType.MODEL) //todo fix liquids properly
+                            {
+                                GlStateManager.translate((float)(x - (double)gsPos.getX() - 0.5D), (float)(y - (double)gsPos.getY()), (float)(z - (double)gsPos.getZ() - 0.5D));
+                                blockrendererdispatcher.getBlockModelRenderer().renderModel(world, blockrendererdispatcher.getModelForState(state), state, gsPos, bufferbuilder, false, MathHelper.getPositionRandom(BlockPos.fromLong(gsTag.getLong("source"))));
+                            }
+                            else if(state.getRenderType() == EnumBlockRenderType.LIQUID)
+                            {
+                                GlStateManager.translate((float)(x - (double)gsPos.getX() - 0.5D), (float)(y - (double)gsPos.getY()) + 0.8125F, (float)(z - (double)gsPos.getZ() - 0.5D));
+                                blockrendererdispatcher.renderBlock(state, gsPos, world, bufferbuilder);
+                            }
                             tessellator.draw();
-
                             GlStateManager.enableLighting();
                         }
                         if(teTag != null)
@@ -187,7 +196,7 @@ public class TileRendererGlobeStand extends TileEntitySpecialRenderer<TileEntity
                                 catch(ReportedException e)
                                 {
                                     classesNotToRender.add(renderTe.getClass());
-                                    //TODO log
+                                    //TODO log... at some point
                                 }
                             }
                         }
@@ -250,8 +259,23 @@ public class TileRendererGlobeStand extends TileEntitySpecialRenderer<TileEntity
                         if(Minecraft.getMinecraft().getConnection().getPlayerInfo(gp.getId()) == null)
                         {
                             NetworkPlayerInfo info = new NetworkPlayerInfo(gp);
-                            info.setResponseTime(-100);
-                            Minecraft.getMinecraft().getConnection().playerInfoMap.put(gp.getId(), info);
+                            try
+                            {
+                                Method method = NetworkPlayerInfo.class.getDeclaredMethod("func_178838_a", int.class);
+                                method.setAccessible(true);
+                                method.invoke(info, -100);
+                            }
+                            catch(NoSuchMethodException | IllegalAccessException | InvocationTargetException ignored) //TODO ew reflection
+                            {
+                                try
+                                {
+                                    Method method = NetworkPlayerInfo.class.getDeclaredMethod("setResponseTime", int.class);
+                                    method.setAccessible(true);
+                                    method.invoke(info, -100);
+                                }
+                                catch(NoSuchMethodException | IllegalAccessException | InvocationTargetException ignored1){}
+                            }
+                            EventHandlerClient.getMcPlayerInfoMap().put(gp.getId(), info);
                         }
                         EntityOtherPlayerMP mp = new EntityOtherPlayerMP(world, gp);
                         mp.readFromNBT(gsTag.getCompoundTag("player" + i));
@@ -311,6 +335,9 @@ public class TileRendererGlobeStand extends TileEntitySpecialRenderer<TileEntity
         //Draw glass
         if(drawGlass)
         {
+            GlStateManager.enableBlend();
+            GlStateManager.tryBlendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
+
             Minecraft.getMinecraft().getTextureManager().bindTexture(TextureMap.LOCATION_BLOCKS_TEXTURE);
             GlStateManager.disableLighting();
             Tessellator tessellator = Tessellator.getInstance();
@@ -318,7 +345,7 @@ public class TileRendererGlobeStand extends TileEntitySpecialRenderer<TileEntity
 
             bufferbuilder.begin(7, DefaultVertexFormats.BLOCK);
             GlStateManager.translate((float)(-(double)gsPos.getX() - 0.5D), (float)(-(double)gsPos.getY()) + 0.3D, (float)(-(double)gsPos.getZ() - 0.5D));
-            IBlockState glass = Blocks.GLASS.getDefaultState();
+            IBlockState glass = gsTag != null && gsTag.hasKey("glassType") ? Blocks.STAINED_GLASS.getStateFromMeta(gsTag.getInteger("glassType")) : Blocks.GLASS.getDefaultState();
             BlockRendererDispatcher blockrendererdispatcher = Minecraft.getMinecraft().getBlockRendererDispatcher();
             blockrendererdispatcher.getBlockModelRenderer().renderModel(world, blockrendererdispatcher.getModelForState(glass), glass, gsPos, bufferbuilder, false, MathHelper.getPositionRandom(BlockPos.ORIGIN));
             tessellator.draw();

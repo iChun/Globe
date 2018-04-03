@@ -74,6 +74,45 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
                 if(!world.isRemote)
                 {
                     itemTag.setInteger("radius", radius);
+
+                    List<Entity> entities = world.getEntitiesWithinAABB(Entity.class, new AxisAlignedBB(getPos()).grow(radius, radius, radius));
+
+                    int playerCount = 0;
+                    int entityCount = 0;
+                    for(Entity ent : entities)
+                    {
+                        if(ent instanceof EntityPlayer)
+                        {
+                            if(ent instanceof FakePlayer) //TODO proper fake player checks
+                            {
+                                continue;
+                            }
+                            NBTTagCompound tag = new NBTTagCompound();
+                            ent.writeToNBT(tag);
+                            NBTTagCompound nbttagcompound = new NBTTagCompound();
+                            NBTUtil.writeGameProfile(nbttagcompound, ((EntityPlayer)ent).getGameProfile());
+                            tag.setTag("Globe_GamePlofile", nbttagcompound);
+                            itemTag.setTag("player" + playerCount, tag);
+                            playerCount++;
+
+                            if(!(((EntityPlayer)ent).capabilities.isCreativeMode || ((EntityPlayer)ent).isSpectator()))
+                            {
+                                ent.attackEntityFrom(ds, 1000000F);
+                            }
+                        }
+                        else
+                        {
+                            NBTTagCompound tag = new NBTTagCompound();
+                            if(ent.writeToNBTOptional(tag))
+                            {
+                                itemTag.setTag("ent" + entityCount, tag);
+                                entityCount++;
+                            }
+                        }
+                    }
+                    itemTag.setInteger("playerCount", playerCount);
+                    itemTag.setInteger("entityCount", entityCount);
+
                     for(int x = -radius; x <= radius; x++)
                     {
                         for(int y = -radius; y <= radius; y++)
@@ -129,44 +168,15 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
                         }
                     }
 
-                    List<Entity> entities = world.getEntitiesWithinAABB(Entity.class, new AxisAlignedBB(getPos()).grow(radius, radius, radius));
+                    entities = world.getEntitiesWithinAABB(Entity.class, new AxisAlignedBB(getPos()).grow(radius, radius, radius));
 
-                    int playerCount = 0;
-                    int entityCount = 0;
                     for(Entity ent : entities)
                     {
-                        if(ent instanceof EntityPlayer)
+                        if(!(ent instanceof EntityPlayer))
                         {
-                            if(ent instanceof FakePlayer) //TODO proper fake player checks
-                            {
-                                continue;
-                            }
-                            NBTTagCompound tag = new NBTTagCompound();
-                            ent.writeToNBT(tag);
-                            NBTTagCompound nbttagcompound = new NBTTagCompound();
-                            NBTUtil.writeGameProfile(nbttagcompound, ((EntityPlayer)ent).getGameProfile());
-                            tag.setTag("Globe_GamePlofile", nbttagcompound);
-                            itemTag.setTag("player" + playerCount, tag);
-                            playerCount++;
-
-                            if(!(((EntityPlayer)ent).capabilities.isCreativeMode || ((EntityPlayer)ent).isSpectator()))
-                            {
-                                ent.attackEntityFrom(ds, 1000000F);
-                            }
-                        }
-                        else
-                        {
-                            NBTTagCompound tag = new NBTTagCompound();
-                            if(ent.writeToNBTOptional(tag))
-                            {
-                                itemTag.setTag("ent" + entityCount, tag);
-                                entityCount++;
-                                ent.setDead();
-                            }
+                            ent.setDead();
                         }
                     }
-                    itemTag.setInteger("playerCount", playerCount);
-                    itemTag.setInteger("entityCount", entityCount);
 
                     IBlockState state = world.getBlockState(pos);
                     world.notifyBlockUpdate(pos, state, state, 3);

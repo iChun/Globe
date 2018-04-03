@@ -114,8 +114,6 @@ public class BlockGlobeCreator extends Block implements ITileEntityProvider
         }
     }
 
-    //TODO getpickblock
-
     @Override
     public int getLightValue(IBlockState state, IBlockAccess world, BlockPos pos)
     {

@@ -43,10 +43,6 @@ public class EventHandlerServer
         Globe.soundChargeup = new SoundEvent(rs).setRegistryName(rs);
         event.getRegistry().register(Globe.soundChargeup);
 
-        rs = new ResourceLocation("globe", "amb");
-        Globe.soundAmb = new SoundEvent(rs).setRegistryName(rs);
-        event.getRegistry().register(Globe.soundAmb);
-
         rs = new ResourceLocation("globe", "ding");
         Globe.soundDing = new SoundEvent(rs).setRegistryName(rs);
         event.getRegistry().register(Globe.soundDing);

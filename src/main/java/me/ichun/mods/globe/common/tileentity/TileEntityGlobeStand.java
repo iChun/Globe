@@ -22,7 +22,7 @@ public class TileEntityGlobeStand extends TileEntity implements ITickable
     @SideOnly(Side.CLIENT)
     public HashSet<Entity> renderingEnts = new HashSet<>();
 
-    public NBTTagCompound itemTag; //TODO dyeable glass
+    public NBTTagCompound itemTag;
 
     public boolean isStand;
 

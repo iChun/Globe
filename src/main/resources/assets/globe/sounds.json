@@ -1,10 +1,4 @@
 {
-  "amb": {
-    "category": "block",
-    "sounds": [
-      "globe:amb"
-    ]
-  },
   "chargeup": {
     "category": "block",
     "sounds": [

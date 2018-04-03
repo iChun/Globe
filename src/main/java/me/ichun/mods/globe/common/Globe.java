@@ -32,7 +32,6 @@ public class Globe
     public static Block blockGlobeStand;
     public static Item itemGlobe;
 
-    public static SoundEvent soundAmb;
     public static SoundEvent soundChargeup;
     public static SoundEvent soundDing;
 
