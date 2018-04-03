@@ -5,10 +5,7 @@ import me.ichun.mods.globe.common.tileentity.TileEntityGlobeCreator;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.ModelBase;
 import net.minecraft.client.model.ModelRenderer;
-import net.minecraft.client.renderer.BufferBuilder;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.RenderHelper;
-import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.client.renderer.*;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.entity.Entity;
@@ -17,6 +14,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import org.lwjgl.opengl.GL11;
 
+import java.util.HashMap;
 import java.util.Random;
 
 public class TileRendererGlobeCreator extends TileEntitySpecialRenderer<TileEntityGlobeCreator>
@@ -53,8 +51,13 @@ public class TileRendererGlobeCreator extends TileEntitySpecialRenderer<TileEnti
 
             GlStateManager.scale(0.8F, 0.8F, 0.8F);
 
+            GlStateManager.enableBlend();
+            GlStateManager.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
+
             if(te.timeToGlobe >= 0)
             {
+                GlStateManager.depthMask(true);
+                GlStateManager.enableCull();
                 GlStateManager.rotate(7200F * bigProgPow + 360F * smallProg, 0F, 1F, 0F);
             }
 
@@ -63,15 +66,39 @@ public class TileRendererGlobeCreator extends TileEntitySpecialRenderer<TileEnti
             GlStateManager.popMatrix();
             //end render globe
 
-            GlStateManager.enableBlend();
-            GlStateManager.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
+            //render blocks
+            if (te.timeToGlobe >= 0 && te.timeToGlobe <= 12 && te.itemTag != null && !te.itemTag.hasNoTags())
+            {
+                int i = te.getWorld().getCombinedLight(te.getPos(), 0);
+                float f = (float)(i & 65535);
+                float f1 = (float)(i >> 16);
+                OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, f, f1);
+
+                GlStateManager.pushMatrix();
+
+                GlStateManager.translate(0D, -0.5D * (1.0F - smallProg), 0D);
+
+                float scale = 1 / 0.05F * (3F / te.radius) * (1.0F - (float)Math.pow(smallProg, 2));
+                GlStateManager.scale(scale, scale, scale);
+
+                if(scale > 0.0D)
+                {
+                    if(te.renderingTEs == null)
+                    {
+                        te.renderingTEs = new HashMap<>();
+                    }
+                    TileRendererGlobeStand.drawGlobe(te.getWorld(), false, false, true, te.itemTag, te.renderingTEs, BlockPos.ORIGIN, partialTicks);
+                }
+
+                GlStateManager.popMatrix();
+            }
+            //end render blocks
 
             //render light?
             if (te.timeToGlobe >= 0)
             {
                 Tessellator tessellator = Tessellator.getInstance();
                 BufferBuilder bufferbuilder = tessellator.getBuffer();
-                RenderHelper.disableStandardItemLighting();
                 float f = bigProg;
                 float f1 = 0.0F;
 
@@ -83,10 +110,8 @@ public class TileRendererGlobeCreator extends TileEntitySpecialRenderer<TileEnti
                 Random random = new Random(432L);
                 GlStateManager.disableTexture2D();
                 GlStateManager.shadeModel(7425);
-                GlStateManager.enableBlend();
                 GlStateManager.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE);
                 GlStateManager.disableAlpha();
-                GlStateManager.enableCull();
                 GlStateManager.depthMask(false);
                 GlStateManager.pushMatrix();
                 double scale1 = (1D + ((0.4D * bigProgPow - 0.4D * smallProg) * (te.radius * 2)) - 1.4D * smallProg) * 0.05D;
@@ -122,9 +147,10 @@ public class TileRendererGlobeCreator extends TileEntitySpecialRenderer<TileEnti
                 GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
                 GlStateManager.enableTexture2D();
                 GlStateManager.enableAlpha();
-                RenderHelper.enableStandardItemLighting();
             }
             //end render light
+
+            GlStateManager.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
 
             //render first cube
             if(!te.globed)
@@ -145,9 +171,8 @@ public class TileRendererGlobeCreator extends TileEntitySpecialRenderer<TileEnti
 
                 bindTexture(txGlobeCreator);
                 modelGlobeCreator.render(0.0625F);
+                GlStateManager.popMatrix();
             }
-
-            GlStateManager.popMatrix();
             //end render first cube
 
             //render boundaries

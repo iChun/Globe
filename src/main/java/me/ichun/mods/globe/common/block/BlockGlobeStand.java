@@ -176,8 +176,11 @@ public class BlockGlobeStand extends Block implements ITileEntityProvider
             }
             if(gs.itemTag != null)
             {
-                ItemStack is = new ItemStack(Globe.itemGlobe, 1, 1);
-                is.setTagCompound(gs.itemTag);
+                ItemStack is = new ItemStack(Globe.itemGlobe, 1, gs.itemTag.hasNoTags() ? 0 : 1);
+                if(!gs.itemTag.hasNoTags())
+                {
+                    is.setTagCompound(gs.itemTag);
+                }
                 drops.add(is);
             }
         }

@@ -64,6 +64,8 @@ public class TileEntityGlobeStand extends TileEntity implements ITickable
             prevRotation = rotation;
             rotation += rotateFactor;
 
+            rotateFactor *= 0.999F;
+
             prevDisX = disX;
             prevDisY = disY;
             prevDisZ = disZ;

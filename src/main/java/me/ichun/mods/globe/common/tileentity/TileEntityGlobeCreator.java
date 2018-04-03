@@ -5,7 +5,6 @@ import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.item.EntityItem;
-import net.minecraft.init.Blocks;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.NetworkManager;
@@ -15,9 +14,12 @@ import net.minecraft.util.ITickable;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
+import net.minecraftforge.fml.relauncher.Side;
+import net.minecraftforge.fml.relauncher.SideOnly;
 import org.apache.commons.lang3.RandomStringUtils;
 
 import javax.annotation.Nullable;
+import java.util.HashMap;
 
 public class TileEntityGlobeCreator extends TileEntity implements ITickable
 {
@@ -25,6 +27,10 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
     public int timeToGlobe;
     public int totalGlobeTime;
     public int radius;
+    public NBTTagCompound itemTag;
+
+    @SideOnly(Side.CLIENT)
+    public HashMap<String, TileEntity> renderingTEs;
 
     public boolean globed;
 
@@ -32,6 +38,8 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
     {
         timeToGlobe = -1;
         radius = 5;
+        totalGlobeTime = 0;
+        itemTag = new NBTTagCompound();
     }
 
     @Override
@@ -40,20 +48,12 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
         if(timeToGlobe > 0)
         {
             timeToGlobe--;
-            if(timeToGlobe == 0)
+            if(timeToGlobe == 12)
             {
-                globed = true;
-                //TODO do stuff
                 if(!world.isRemote)
                 {
                     //TODO animals?
-
-                    ItemStack is = new ItemStack(Globe.itemGlobe, 1, 1);
-                    NBTTagCompound tag = new NBTTagCompound();
-                    tag.setString("identification", RandomStringUtils.randomAlphanumeric(20));
-                    tag.setLong("source", getPos().toLong());
-
-                    tag.setInteger("radius", radius);
+                    itemTag.setInteger("radius", radius);
                     for(int x = -radius; x <= radius; x++)
                     {
                         for(int y = -radius; y <= radius; y++)
@@ -83,13 +83,28 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
                                             coordTag.setTag("TileEntityData", te.writeToNBT(new NBTTagCompound())); //TODO might have to change the xyz in the NBT;
                                         }
                                     }
-                                    tag.setTag(coord, coordTag);
+                                    itemTag.setTag(coord, coordTag);
                                 }
                             }
                         }
                     }
+                    IBlockState state = world.getBlockState(pos);
+                    world.notifyBlockUpdate(pos, state, state, 3);
 
-                    is.setTagCompound(tag);
+                    //TODO remove the blocks
+                }
+            }
+            else if(timeToGlobe == 0)
+            {
+                globed = true;
+                if(!world.isRemote)
+                {
+                    ItemStack is = new ItemStack(Globe.itemGlobe, 1, 1);
+                    itemTag = new NBTTagCompound();
+                    itemTag.setString("identification", RandomStringUtils.randomAlphanumeric(20));
+                    itemTag.setLong("source", getPos().toLong());
+
+                    is.setTagCompound(itemTag);
 
                     EntityItem entityitem = new EntityItem(this.world, getPos().getX() + 0.5D, getPos().getY() + 0.5D, getPos().getZ() + 0.5D, is);
                     entityitem.setPickupDelay(40);
@@ -97,8 +112,6 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
 
                     world.setBlockToAir(pos);
                 }
-
-                timeToGlobe = -1;
             }
         }
     }
@@ -131,6 +144,7 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
         tag.setInteger("timeToGlobe", timeToGlobe);
         tag.setInteger("totalGlobeTime", totalGlobeTime);
         tag.setInteger("radius", radius);
+        tag.setTag("itemTag", itemTag);
         return tag;
     }
 
@@ -142,6 +156,7 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
         timeToGlobe = tag.getInteger("timeToGlobe");
         totalGlobeTime = tag.getInteger("totalGlobeTime");
         radius = tag.getInteger("radius");
+        itemTag = tag.getCompoundTag("itemTag");
     }
 
     @Override
