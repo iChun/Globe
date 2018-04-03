@@ -1,18 +1,35 @@
 package me.ichun.mods.globe.client.render;
 
+import com.google.common.collect.Iterables;
+import com.mojang.authlib.GameProfile;
+import com.mojang.authlib.minecraft.MinecraftSessionService;
+import com.mojang.authlib.properties.Property;
+import com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService;
 import me.ichun.mods.globe.client.model.ModelGlobeStand;
 import me.ichun.mods.globe.client.model.ModelStand;
 import me.ichun.mods.globe.common.tileentity.TileEntityGlobeStand;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.entity.EntityOtherPlayerMP;
+import net.minecraft.client.network.NetworkPlayerInfo;
 import net.minecraft.client.renderer.*;
+import net.minecraft.client.renderer.entity.Render;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
 import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
 import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityList;
+import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.monster.EntityCreeper;
+import net.minecraft.entity.passive.EntityChicken;
+import net.minecraft.entity.passive.EntityCow;
+import net.minecraft.entity.passive.EntityHorse;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTUtil;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumBlockRenderType;
 import net.minecraft.util.ReportedException;
@@ -23,11 +40,14 @@ import net.minecraft.world.World;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.UUID;
 
 public class TileRendererGlobeStand extends TileEntitySpecialRenderer<TileEntityGlobeStand>
 {
     public static final ResourceLocation txGlobeStand = new ResourceLocation("globe", "textures/model/stand.png");
     public static final ResourceLocation txStand = new ResourceLocation("globe", "textures/model/stand_actual.png");
+
+    public static MinecraftSessionService sessionService;
 
     public static int renderLevel = 0;
 
@@ -84,14 +104,15 @@ public class TileRendererGlobeStand extends TileEntitySpecialRenderer<TileEntity
                 GlStateManager.translate(0, -0.25D, 0);
             }
 
-            GlStateManager.rotate(gs.prevRotation + (gs.rotation - gs.prevRotation) * partialTicks, 0, 1, 0); //rotation
+            float rot = gs.prevRotation + (gs.rotation - gs.prevRotation) * partialTicks;
+            GlStateManager.rotate(rot, 0, 1, 0); //rotation
 
-            drawGlobe(gs.getWorld(), true, true, true, gs.itemTag, gs.renderingTiles, gs.getPos(), partialTicks);
+            drawGlobe(gs.getWorld(), true, true, true, gs.itemTag, gs.renderingTiles, gs.renderingEnts, gs.getPos(), rot, partialTicks);
         }
         GlStateManager.popMatrix();
     }
 
-    public static void drawGlobe(World world, boolean drawBase, boolean drawGlass, boolean drawInternal, NBTTagCompound gsTag, HashMap<String, TileEntity> tileEntityMap, BlockPos gsPos, float partialTicks)
+    public static void drawGlobe(World world, boolean drawBase, boolean drawGlass, boolean drawInternal, NBTTagCompound gsTag, HashMap<String, TileEntity> tileEntityMap, HashSet<Entity> entities, BlockPos gsPos, float rotation, float partialTicks)
     {
         if(drawInternal && gsTag != null && gsTag.getInteger("radius") > 0 && renderLevel < 2)
         {
@@ -119,7 +140,7 @@ public class TileRendererGlobeStand extends TileEntitySpecialRenderer<TileEntity
                         IBlockState state = Block.getBlockFromName(tag.getString("Block")).getStateFromMeta(tag.getByte("Data") & 255);
                         NBTTagCompound teTag = null;
 
-                        if (tag.hasKey("TileEntityData"))
+                        if(tag.hasKey("TileEntityData"))
                         {
                             teTag = tag.getCompoundTag("TileEntityData");
                         }
@@ -177,6 +198,94 @@ public class TileRendererGlobeStand extends TileEntitySpecialRenderer<TileEntity
                     }
                 }
             }
+
+            //draw ents
+            int entityCount = gsTag.getInteger("entityCount"); //TODO fix the entity render in GUI changing normalize
+            boolean create = entities.isEmpty();
+            if(create && entityCount > 0)
+            {
+                for(int i = 0; i < entityCount; i++)
+                {
+                    Entity ent = EntityList.createEntityFromNBT(gsTag.getCompoundTag("ent" + i), world);
+                    if(ent != null)
+                    {
+                        entities.add(ent);
+                        if(ent instanceof EntityLivingBase)
+                        {
+                            ent.posY += 500D;
+                        }
+                        ent.onUpdate();
+                        if(ent instanceof EntityLivingBase)
+                        {
+                            ent.posY -= 500D;
+                        }
+                    }
+                }
+                if(entities.isEmpty())
+                {
+                    gsTag.setInteger("entityCount", 0);
+                }
+            }
+            int playerCount = gsTag.getInteger("playerCount");
+            if(create && playerCount > 0)
+            {
+                for(int i = 0; i < playerCount; i++)
+                {
+                    GameProfile gp = NBTUtil.readGameProfileFromNBT(gsTag.getCompoundTag("player" + i).getCompoundTag("Globe_GamePlofile"));
+                    if(gp != null)
+                    {
+                        Property property = (Property)Iterables.getFirst(gp.getProperties().get("textures"), (Object)null);
+
+                        if (property == null)
+                        {
+                            if(sessionService == null)
+                            {
+                                YggdrasilAuthenticationService yggdrasilauthenticationservice = new YggdrasilAuthenticationService(Minecraft.getMinecraft().getProxy(), UUID.randomUUID().toString());
+                                sessionService = yggdrasilauthenticationservice.createMinecraftSessionService();
+                            }
+                            gp = sessionService.fillProfileProperties(gp, true);
+                        }
+
+                        if(Minecraft.getMinecraft().getConnection().getPlayerInfo(gp.getId()) == null)
+                        {
+                            NetworkPlayerInfo info = new NetworkPlayerInfo(gp);
+                            info.setResponseTime(-100);
+                            Minecraft.getMinecraft().getConnection().playerInfoMap.put(gp.getId(), info);
+                        }
+                        EntityOtherPlayerMP mp = new EntityOtherPlayerMP(world, gp);
+                        mp.readFromNBT(gsTag.getCompoundTag("player" + i));
+                        mp.posY += 500D;
+                        mp.onUpdate();
+                        mp.posY -= 500D;
+                        entities.add(mp);
+                    }
+                }
+            }
+            for(Entity ent : entities)
+            {
+                GlStateManager.pushMatrix();
+
+                BlockPos source = BlockPos.fromLong(gsTag.getLong("source")).equals(BlockPos.ORIGIN) ? gsPos : BlockPos.fromLong(gsTag.getLong("source"));
+
+                GlStateManager.translate(ent.posX - source.getX() - 0.5D, ent.posY - source.getY(), ent.posZ - source.getZ() - 0.5D);
+
+                Render render = Minecraft.getMinecraft().getRenderManager().getEntityRenderObject(ent);
+                try
+                {
+                    float oriY = Minecraft.getMinecraft().getRenderManager().playerViewY;
+                    Minecraft.getMinecraft().getRenderManager().playerViewY += rotation;
+                    render.doRender(ent, 0D, 0D, 0D, ent.rotationYaw, partialTicks);
+                    Minecraft.getMinecraft().getRenderManager().playerViewY = oriY;
+                }
+                catch(Exception ignored){}
+
+                GlStateManager.popMatrix();
+            }
+            OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, 240F, 240F);
+            GlStateManager.color(1F, 1F, 1F, 1F);
+
+            //end draw ents
+
             GlStateManager.popMatrix();
 
             renderLevel--;

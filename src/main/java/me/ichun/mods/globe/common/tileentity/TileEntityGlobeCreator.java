@@ -4,12 +4,17 @@ import me.ichun.mods.globe.common.Globe;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.item.EntityItem;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTUtil;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.play.server.SPacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.EntitySelectors;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.ITickable;
 import net.minecraft.util.ResourceLocation;
@@ -22,6 +27,8 @@ import org.apache.commons.lang3.RandomStringUtils;
 
 import javax.annotation.Nullable;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 
 public class TileEntityGlobeCreator extends TileEntity implements ITickable
 {
@@ -35,6 +42,9 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
 
     @SideOnly(Side.CLIENT)
     public HashMap<String, TileEntity> renderingTEs;
+
+    @SideOnly(Side.CLIENT)
+    public HashSet<Entity> renderingEnts;
 
     public boolean globed;
     public int lastLight;
@@ -57,7 +67,6 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
             {
                 if(!world.isRemote)
                 {
-                    //TODO animals?
                     itemTag.setInteger("radius", radius);
                     for(int x = -radius; x <= radius; x++)
                     {
@@ -93,10 +102,41 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
                             }
                         }
                     }
+
+                    List<Entity> entities = world.getEntitiesWithinAABB(Entity.class, new AxisAlignedBB(getPos()).grow(radius, radius, radius));
+
+                    int playerCount = 0;
+                    int entityCount = 0;
+                    for(Entity ent : entities)
+                    {
+                        if(ent instanceof EntityPlayer)
+                        {
+                            NBTTagCompound tag = new NBTTagCompound();
+                            ent.writeToNBT(tag);
+                            NBTTagCompound nbttagcompound = new NBTTagCompound();
+                            NBTUtil.writeGameProfile(nbttagcompound, ((EntityPlayer)ent).getGameProfile());
+                            tag.setTag("Globe_GamePlofile", nbttagcompound);
+                            itemTag.setTag("player" + playerCount, tag);
+                            playerCount++;
+                        }
+                        else
+                        {
+                            NBTTagCompound tag = new NBTTagCompound();
+                            if(ent.writeToNBTOptional(tag))
+                            {
+                                itemTag.setTag("ent" + entityCount, tag);
+                                entityCount++;
+                            }
+                        }
+                    }
+                    itemTag.setInteger("playerCount", playerCount);
+                    itemTag.setInteger("entityCount", entityCount);
+
                     IBlockState state = world.getBlockState(pos);
                     world.notifyBlockUpdate(pos, state, state, 3);
 
                     //TODO remove the blocks
+                    //TODO kill off the entities
                 }
             }
             else if(timeToGlobe == 0)
@@ -145,7 +185,6 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
     @Override
     public void onDataPacket(NetworkManager net, SPacketUpdateTileEntity pkt)
     {
-        //TODO do trigger read.
         this.readFromNBT(pkt.getNbtCompound());
     }
 

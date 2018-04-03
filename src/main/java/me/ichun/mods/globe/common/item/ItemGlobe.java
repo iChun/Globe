@@ -80,6 +80,8 @@ public class ItemGlobe extends Item
                     iblockstate1 = worldIn.getBlockState(pos);
                     SoundType soundtype = iblockstate1.getBlock().getSoundType(iblockstate1, worldIn, pos, player);
                     worldIn.playSound(player, pos, soundtype.getPlaceSound(), SoundCategory.BLOCKS, (soundtype.getVolume() + 1.0F) / 2.0F, soundtype.getPitch() * 0.8F);
+                    IBlockState state = worldIn.getBlockState(pos);
+                    worldIn.notifyBlockUpdate(pos, state, state, 3);
                     itemstack.shrink(1);
                 }
 
@@ -102,18 +104,15 @@ public class ItemGlobe extends Item
             if (player instanceof EntityPlayerMP)
                 CriteriaTriggers.PLACED_BLOCK.trigger((EntityPlayerMP)player, pos, stack);
 
-            if(!world.isRemote)
+            TileEntity te = world.getTileEntity(pos);
+            if(te instanceof TileEntityGlobeStand)
             {
-                TileEntity te = world.getTileEntity(pos);
-                if(te instanceof TileEntityGlobeStand)
-                {
-                    TileEntityGlobeStand gs = (TileEntityGlobeStand)te;
-                    gs.isStand = false;
-                    gs.itemTag = !stack.hasTagCompound() ? new NBTTagCompound() : stack.getTagCompound();
+                TileEntityGlobeStand gs = (TileEntityGlobeStand)te;
+                gs.isStand = false;
+                gs.itemTag = !stack.hasTagCompound() ? new NBTTagCompound() : stack.getTagCompound();
 
-                    int i = MathHelper.floor((double)(player.rotationYaw * 4.0F / 360.0F) + 0.5D) & 3;
-                    gs.prevRotation = gs.rotation = -90 * i;
-                }
+                int i = MathHelper.floor((double)(player.rotationYaw * 4.0F / 360.0F) + 0.5D) & 3;
+                gs.prevRotation = gs.rotation = -90 * i;
             }
         }
 

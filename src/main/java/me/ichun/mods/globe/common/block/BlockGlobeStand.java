@@ -34,7 +34,7 @@ public class BlockGlobeStand extends Block implements ITileEntityProvider
         super(Material.IRON);
         setRegistryName(new ResourceLocation("globe", "globe_stand"));
         setUnlocalizedName("globe.block.globeStand");
-        setCreativeTab(CreativeTabs.DECORATIONS); //TODO emit light
+        setCreativeTab(CreativeTabs.DECORATIONS);
     }
 
     @Nullable
@@ -116,6 +116,15 @@ public class BlockGlobeStand extends Block implements ITileEntityProvider
             }
         }
         return 0;
+    }
+
+    @Override
+    public boolean removedByPlayer(IBlockState state, World world, BlockPos pos, EntityPlayer player, boolean willHarvest)
+    {
+        this.onBlockHarvested(world, pos, state, player);
+        boolean flag = world.setBlockState(pos, net.minecraft.init.Blocks.AIR.getDefaultState(), world.isRemote ? 11 : 3);
+        world.checkLight(pos); //hacky light fix
+        return flag;
     }
 
     @Override
@@ -202,9 +211,16 @@ public class BlockGlobeStand extends Block implements ITileEntityProvider
     }
 
     @Override
+    public void breakBlock(World worldIn, BlockPos pos, IBlockState state) //TODO test canRenderBreaking()
+    {
+        super.breakBlock(worldIn, pos, state);
+        worldIn.removeTileEntity(pos);
+    }
+
+    @Override
     public boolean canPlaceBlockAt(World worldIn, BlockPos pos)
     {
-        return worldIn.getBlockState(pos.down()).isSideSolid(worldIn, pos, EnumFacing.UP) || worldIn.getBlockState(pos.down()).getBlock() == Blocks.GLOWSTONE || worldIn.getBlockState(pos.down()).getBlock() == Blocks.GLASS;
+        return worldIn.getBlockState(pos.down()).isSideSolid(worldIn, pos, EnumFacing.UP) || worldIn.getBlockState(pos.down()).getBlock() == Blocks.GLOWSTONE || worldIn.getBlockState(pos.down()).getBlock() == Blocks.GLASS || worldIn.getBlockState(pos.down()).getBlock() == Blocks.STAINED_GLASS;
     }
 
     @Override

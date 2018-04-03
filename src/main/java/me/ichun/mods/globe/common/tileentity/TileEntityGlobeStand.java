@@ -1,20 +1,26 @@
 package me.ichun.mods.globe.common.tileentity;
 
+import net.minecraft.entity.Entity;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.play.server.SPacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ITickable;
+import net.minecraft.world.EnumSkyBlock;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
 import javax.annotation.Nullable;
 import java.util.HashMap;
+import java.util.HashSet;
 
 public class TileEntityGlobeStand extends TileEntity implements ITickable
 {
     @SideOnly(Side.CLIENT)
     public HashMap<String, TileEntity> renderingTiles = new HashMap<>();
+
+    @SideOnly(Side.CLIENT)
+    public HashSet<Entity> renderingEnts = new HashSet<>();
 
     public NBTTagCompound itemTag; //TODO dyeable glass
 
@@ -37,6 +43,8 @@ public class TileEntityGlobeStand extends TileEntity implements ITickable
     public float rotation;
     public float prevRotation;
 
+    public boolean updateLighting;
+
     public TileEntityGlobeStand()
     {
         disX = disZ = 0F;
@@ -55,6 +63,10 @@ public class TileEntityGlobeStand extends TileEntity implements ITickable
         if(!isStand)
         {
             rotateFactor = bobProg = bobAmp = 0F;
+            if(world.getLightFor(EnumSkyBlock.BLOCK, pos) > 0)
+            {
+                world.checkLight(pos);
+            }
         }
         if(itemTag != null)
         {
@@ -81,6 +93,11 @@ public class TileEntityGlobeStand extends TileEntity implements ITickable
 
             rubberbandX += -disX / 0.8F;
             rubberbandZ += -disZ / 0.8F;
+        }
+        if(updateLighting)
+        {
+            updateLighting = false;
+            world.checkLight(pos);
         }
     }
 

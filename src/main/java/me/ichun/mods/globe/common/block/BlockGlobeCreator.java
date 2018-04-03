@@ -3,6 +3,7 @@ package me.ichun.mods.globe.common.block;
 import me.ichun.mods.globe.common.Globe;
 import me.ichun.mods.globe.common.tileentity.TileEntityGlobeCreator;
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockContainer;
 import net.minecraft.block.ITileEntityProvider;
 import net.minecraft.block.SoundType;
 import net.minecraft.block.material.Material;
@@ -26,7 +27,7 @@ public class BlockGlobeCreator extends Block implements ITileEntityProvider
         super(Material.IRON);
         setRegistryName(new ResourceLocation("globe", "globe_creator"));
         setUnlocalizedName("globe.block.globeCreator");
-        setCreativeTab(CreativeTabs.DECORATIONS); //TODO emit light
+        setCreativeTab(CreativeTabs.DECORATIONS);
     }
 
     @Nullable
@@ -86,7 +87,23 @@ public class BlockGlobeCreator extends Block implements ITileEntityProvider
                 return (int)(MathHelper.clamp(1.0F - (gc.timeToGlobe - 10) / (gc.totalGlobeTime - 10F), 0F, 1F) * 15F * MathHelper.clamp((gc.radius * 2 + 4) / 15F, 0F, 1F));
             }
         }
-        return 0;
+        return state.getLightValue();
+    }
+
+    @Override
+    public boolean removedByPlayer(IBlockState state, World world, BlockPos pos, EntityPlayer player, boolean willHarvest)
+    {
+        this.onBlockHarvested(world, pos, state, player);
+        boolean flag = world.setBlockState(pos, net.minecraft.init.Blocks.AIR.getDefaultState(), world.isRemote ? 11 : 3);
+        world.checkLight(pos); //hacky light fix
+        return flag;
+    }
+
+    @Override
+    public void breakBlock(World worldIn, BlockPos pos, IBlockState state)
+    {
+        super.breakBlock(worldIn, pos, state);
+        worldIn.removeTileEntity(pos);
     }
 
     @Override

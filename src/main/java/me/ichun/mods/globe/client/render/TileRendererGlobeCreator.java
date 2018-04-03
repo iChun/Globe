@@ -15,6 +15,7 @@ import net.minecraft.util.math.MathHelper;
 import org.lwjgl.opengl.GL11;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Random;
 
 public class TileRendererGlobeCreator extends TileEntitySpecialRenderer<TileEntityGlobeCreator>
@@ -61,7 +62,7 @@ public class TileRendererGlobeCreator extends TileEntitySpecialRenderer<TileEnti
                 GlStateManager.rotate(7200F * bigProgPow + 360F * smallProg, 0F, 1F, 0F);
             }
 
-            TileRendererGlobeStand.drawGlobe(te.getWorld(), true, true, false, null, null, BlockPos.ORIGIN, partialTicks);
+            TileRendererGlobeStand.drawGlobe(te.getWorld(), true, true, false, null, null, null, BlockPos.ORIGIN, 0F, partialTicks);
 
             GlStateManager.popMatrix();
             //end render globe
@@ -87,12 +88,19 @@ public class TileRendererGlobeCreator extends TileEntitySpecialRenderer<TileEnti
                     {
                         te.renderingTEs = new HashMap<>();
                     }
-                    TileRendererGlobeStand.drawGlobe(te.getWorld(), false, false, true, te.itemTag, te.renderingTEs, BlockPos.ORIGIN, partialTicks);
+                    if(te.renderingEnts == null)
+                    {
+                        te.renderingEnts = new HashSet<>();
+                    }
+                    TileRendererGlobeStand.drawGlobe(te.getWorld(), false, false, true, te.itemTag, te.renderingTEs, te.renderingEnts, te.getPos(), 0F, partialTicks);
                 }
 
                 GlStateManager.popMatrix();
             }
             //end render blocks
+
+            GlStateManager.enableBlend();
+            GlStateManager.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
 
             //render light?
             if (te.timeToGlobe >= 0)
