@@ -9,6 +9,8 @@ Known issues: The Globe render is a bit laggy/wonky in terms of the blocks. I di
 1 item:
 - Globe
 
+You can change the globe's glass colour once it's been put through the creator using coloured glass.
+
 Recipes:
 Globe:
 GGG
