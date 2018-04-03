@@ -16,10 +16,7 @@ import java.util.HashSet;
 
 public class TileEntityGlobeStand extends TileEntity implements ITickable
 {
-    @SideOnly(Side.CLIENT)
     public HashMap<String, TileEntity> renderingTiles = new HashMap<>();
-
-    @SideOnly(Side.CLIENT)
     public HashSet<Entity> renderingEnts = new HashSet<>();
 
     public NBTTagCompound itemTag;

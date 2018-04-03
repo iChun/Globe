@@ -39,10 +39,7 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
     public int radius;
     public NBTTagCompound itemTag;
 
-    @SideOnly(Side.CLIENT)
     public HashMap<String, TileEntity> renderingTEs;
-
-    @SideOnly(Side.CLIENT)
     public HashSet<Entity> renderingEnts;
 
     public boolean globed;
