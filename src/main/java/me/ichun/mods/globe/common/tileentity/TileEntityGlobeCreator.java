@@ -22,10 +22,16 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
 {
     public boolean hasGlobe;
     public int timeToGlobe;
+    public int totalGlobeTime;
+    public int radius;
+
+    public boolean globed;
 
     public TileEntityGlobeCreator()
     {
+        hasGlobe = true; //TODO remove this
         timeToGlobe = -1;
+        radius = 5;
     }
 
     @Override
@@ -36,6 +42,7 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
             timeToGlobe--;
             if(timeToGlobe == 0)
             {
+                globed = true;
                 //TODO do stuff
                 if(!world.isRemote)
                 {
@@ -47,8 +54,6 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
                     NBTTagCompound tag = new NBTTagCompound();
                     tag.setString("identification", RandomStringUtils.randomAlphanumeric(20));
                     tag.setLong("source", getPos().toLong());
-
-                    int radius = 5;
 
                     tag.setInteger("radius", radius);
                     for(int x = -radius; x <= radius; x++)
@@ -90,7 +95,8 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
 
                     EntityItem entityitem = new EntityItem(this.world, getPos().getX() + 0.5D, getPos().getY() + 0.5D, getPos().getZ() + 0.5D, is);
                     entityitem.setPickupDelay(40);
-                    world.spawnEntity(entityitem);
+                    //TODO remove this
+//                    world.spawnEntity(entityitem);
                 }
 
                 timeToGlobe = -1; //TODO remove this
@@ -124,6 +130,8 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
         super.writeToNBT(tag);
         tag.setBoolean("hasGlobe", hasGlobe);
         tag.setInteger("timeToGlobe", timeToGlobe);
+        tag.setInteger("totalGlobeTime", totalGlobeTime);
+        tag.setInteger("radius", radius);
         return tag;
     }
 
@@ -133,5 +141,7 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
         super.readFromNBT(tag);
         hasGlobe = tag.getBoolean("hasGlobe");
         timeToGlobe = tag.getInteger("timeToGlobe");
+        totalGlobeTime = tag.getInteger("totalGlobeTime");
+        radius = tag.getInteger("radius");
     }
 }

@@ -62,7 +62,8 @@ public class BlockGlobeCreator extends Block implements ITileEntityProvider
             {
                 if(!world.isRemote)
                 {
-                    gc.timeToGlobe = 10;
+                    gc.timeToGlobe = gc.totalGlobeTime = 200;
+                    gc.radius = 3;
                     world.notifyBlockUpdate(pos, state, state, 3);
                 }
                 return true;
