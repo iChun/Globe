@@ -4,16 +4,14 @@ import me.ichun.mods.globe.common.Globe;
 import me.ichun.mods.globe.common.tileentity.TileEntityGlobeCreator;
 import net.minecraft.block.Block;
 import net.minecraft.block.ITileEntityProvider;
+import net.minecraft.block.SoundType;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.EnumBlockRenderType;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.EnumHand;
-import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.*;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
@@ -26,7 +24,7 @@ public class BlockGlobeCreator extends Block implements ITileEntityProvider
         super(Material.IRON);
         setRegistryName(new ResourceLocation("globe", "globe_creator"));
         setUnlocalizedName("globe.block.globeCreator");
-        setCreativeTab(CreativeTabs.DECORATIONS);
+        setCreativeTab(CreativeTabs.DECORATIONS); //TODO emit light
     }
 
     @Nullable
@@ -54,6 +52,8 @@ public class BlockGlobeCreator extends Block implements ITileEntityProvider
                     {
                         playerIn.setHeldItem(hand, ItemStack.EMPTY);
                     }
+                    SoundType soundtype = this.getSoundType();
+                    world.playSound(playerIn, pos, soundtype.getPlaceSound(), SoundCategory.BLOCKS, (soundtype.getVolume() + 1.0F) / 2.0F, soundtype.getPitch() * 0.8F);
                     world.notifyBlockUpdate(pos, state, state, 3);
                     return true;
                 }

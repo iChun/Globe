@@ -17,6 +17,7 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.*;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.World;
 
 public class ItemGlobe extends Item
@@ -50,24 +51,40 @@ public class ItemGlobe extends Item
 
         ItemStack itemstack = player.getHeldItem(hand);
 
-        if (!itemstack.isEmpty() && player.canPlayerEdit(pos, facing, itemstack) && worldIn.mayPlace(Globe.blockGlobeStand, pos, false, facing, (Entity)null))
+        if (!itemstack.isEmpty() && player.canPlayerEdit(pos, facing, itemstack))
         {
             IBlockState iblockstate1 = Globe.blockGlobeStand.getStateForPlacement(worldIn, pos, facing, hitX, hitY, hitZ, 0, player, hand);
-
-            if (placeBlockAt(itemstack, player, worldIn, pos, facing, hitX, hitY, hitZ, iblockstate1))
+            BlockPos offset = pos.offset(facing, -1);
+            TileEntity te = worldIn.getTileEntity(offset);
+            if(te instanceof TileEntityGlobeStand)
             {
-                iblockstate1 = worldIn.getBlockState(pos);
-                SoundType soundtype = iblockstate1.getBlock().getSoundType(iblockstate1, worldIn, pos, player);
-                worldIn.playSound(player, pos, soundtype.getPlaceSound(), SoundCategory.BLOCKS, (soundtype.getVolume() + 1.0F) / 2.0F, soundtype.getPitch() * 0.8F);
-                itemstack.shrink(1);
+                TileEntityGlobeStand gs = (TileEntityGlobeStand)te;
+                if(gs.itemTag == null)
+                {
+                    gs.itemTag = itemstack.hasTagCompound() ? itemstack.getTagCompound() : new NBTTagCompound();
+                    gs.markDirty();
+                    IBlockState state = worldIn.getBlockState(offset);
+                    worldIn.notifyBlockUpdate(offset, state, state, 3);
+                    SoundType soundtype = iblockstate1.getBlock().getSoundType(iblockstate1, worldIn, pos, player);
+                    worldIn.playSound(player, pos, soundtype.getPlaceSound(), SoundCategory.BLOCKS, (soundtype.getVolume() + 1.0F) / 2.0F, soundtype.getPitch() * 0.8F);
+                    itemstack.shrink(1);
+                    return EnumActionResult.SUCCESS;
+                }
             }
+            else if(worldIn.mayPlace(Globe.blockGlobeStand, pos, false, facing, (Entity)null))
+            {
+                if(placeBlockAt(itemstack, player, worldIn, pos, facing, hitX, hitY, hitZ, iblockstate1))
+                {
+                    iblockstate1 = worldIn.getBlockState(pos);
+                    SoundType soundtype = iblockstate1.getBlock().getSoundType(iblockstate1, worldIn, pos, player);
+                    worldIn.playSound(player, pos, soundtype.getPlaceSound(), SoundCategory.BLOCKS, (soundtype.getVolume() + 1.0F) / 2.0F, soundtype.getPitch() * 0.8F);
+                    itemstack.shrink(1);
+                }
 
-            return EnumActionResult.SUCCESS;
+                return EnumActionResult.SUCCESS;
+            }
         }
-        else
-        {
-            return EnumActionResult.FAIL;
-        }
+        return EnumActionResult.FAIL;
     }
 
     public boolean placeBlockAt(ItemStack stack, EntityPlayer player, World world, BlockPos pos, EnumFacing side, float hitX, float hitY, float hitZ, IBlockState newState)
@@ -89,7 +106,11 @@ public class ItemGlobe extends Item
                 if(te instanceof TileEntityGlobeStand)
                 {
                     TileEntityGlobeStand gs = (TileEntityGlobeStand)te;
+                    gs.isStand = false;
                     gs.itemTag = !stack.hasTagCompound() ? new NBTTagCompound() : stack.getTagCompound();
+
+                    int i = MathHelper.floor((double)(player.rotationYaw * 4.0F / 360.0F) + 0.5D) & 3;
+                    gs.prevRotation = gs.rotation = -90 * i;
                 }
             }
         }

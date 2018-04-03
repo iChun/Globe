@@ -5,8 +5,6 @@ import net.minecraft.network.NetworkManager;
 import net.minecraft.network.play.server.SPacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ITickable;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
@@ -20,21 +18,72 @@ public class TileEntityGlobeStand extends TileEntity implements ITickable
 
     public NBTTagCompound itemTag;
 
+    public boolean isStand;
+
+    public float disX;
+    public float disY;
+    public float disZ;
+
+    public float prevDisX;
+    public float prevDisY;
+    public float prevDisZ;
+
+    public float rubberbandX;
+    public float rubberbandY;
+    public float rubberbandZ;
+
+    public float bobAmp;
+    public float bobProg;
+    public float prevBobProg;
+
+    public float rotateFactor;
+    public float rotation;
+    public float prevRotation;
+
     public TileEntityGlobeStand()
     {
+        disX = disZ = 0F;
     }
 
-    public TileEntityGlobeStand(World world, NBTTagCompound tag)
+    public TileEntityGlobeStand(NBTTagCompound itemTag, boolean isStand)
     {
-        this.world = world;
-        this.itemTag = tag;
-        this.pos = BlockPos.ORIGIN;
+        disX = disZ = 0F;
+        this.itemTag = itemTag;
+        this.isStand = isStand;
     }
 
     @Override
     public void update()
     {
+        if(!isStand)
+        {
+            rotateFactor = bobProg = bobAmp = 0F;
+        }
+        if(itemTag != null)
+        {
+            prevRotation = rotation;
+            rotation += rotateFactor;
 
+            prevDisX = disX;
+            prevDisY = disY;
+            prevDisZ = disZ;
+
+            prevBobProg = bobProg;
+            bobProg = (bobProg + 5F * (1F + bobAmp)) % 3600000F;
+            bobAmp *= 0.95F;
+
+            disX += rubberbandX;
+            disZ += rubberbandZ;
+
+            disX *= 0.8F;
+            disZ *= 0.8F;
+
+            rubberbandX *= 0.9F;
+            rubberbandZ *= 0.9F;
+
+            rubberbandX += -disX / 0.8F;
+            rubberbandZ += -disZ / 0.8F;
+        }
     }
 
     @Override
@@ -64,6 +113,10 @@ public class TileEntityGlobeStand extends TileEntity implements ITickable
         {
             tag.setTag("itemTag", itemTag);
         }
+        tag.setBoolean("isStand", isStand);
+        tag.setFloat("rotateFactor", rotateFactor);
+        tag.setFloat("rotation", rotation);
+        tag.setFloat("bobProg", bobProg);
         return tag;
     }
 
@@ -75,5 +128,9 @@ public class TileEntityGlobeStand extends TileEntity implements ITickable
         {
             itemTag = tag.getCompoundTag("itemTag");
         }
+        isStand = tag.getBoolean("isStand");
+        rotateFactor = tag.getFloat("rotateFactor");
+        rotation = tag.getFloat("rotation");
+        bobProg = tag.getFloat("bobProg");
     }
 }

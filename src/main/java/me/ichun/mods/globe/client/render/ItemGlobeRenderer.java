@@ -24,6 +24,13 @@ public class ItemGlobeRenderer extends TileEntityItemStackRenderer
             {
                 RENDERER_GLOBE_CREATOR.render(null, 0, 0, 0, 0, -1, 0.0F);
             }
+            else
+            {
+                GlStateManager.pushMatrix();
+                GlStateManager.translate(0.0F, 0.35F, 0.0F);
+                RENDERER_GLOBE_STAND.render(null, 0, 0, 0, 0, -1, 0.0F);
+                GlStateManager.popMatrix();
+            }
         }
         else if(is.getItem() == Globe.itemGlobe)
         {

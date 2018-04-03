@@ -13,6 +13,7 @@ import net.minecraft.network.play.server.SPacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ITickable;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import org.apache.commons.lang3.RandomStringUtils;
 
@@ -29,7 +30,6 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
 
     public TileEntityGlobeCreator()
     {
-        hasGlobe = true; //TODO remove this
         timeToGlobe = -1;
         radius = 5;
     }
@@ -46,8 +46,6 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
                 //TODO do stuff
                 if(!world.isRemote)
                 {
-                    world.setBlockToAir(pos);
-
                     //TODO animals?
 
                     ItemStack is = new ItemStack(Globe.itemGlobe, 1, 1);
@@ -95,11 +93,12 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
 
                     EntityItem entityitem = new EntityItem(this.world, getPos().getX() + 0.5D, getPos().getY() + 0.5D, getPos().getZ() + 0.5D, is);
                     entityitem.setPickupDelay(40);
-                    //TODO remove this
-//                    world.spawnEntity(entityitem);
+                    world.spawnEntity(entityitem);
+
+                    world.setBlockToAir(pos);
                 }
 
-                timeToGlobe = -1; //TODO remove this
+                timeToGlobe = -1;
             }
         }
     }
@@ -143,5 +142,24 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
         timeToGlobe = tag.getInteger("timeToGlobe");
         totalGlobeTime = tag.getInteger("totalGlobeTime");
         radius = tag.getInteger("radius");
+    }
+
+    @Override
+    public boolean shouldRenderInPass(int pass)
+    {
+        return pass == 0 && timeToGlobe < 0 || pass == 1 && timeToGlobe >= 0;
+    }
+
+    @Override
+    public AxisAlignedBB getRenderBoundingBox()
+    {
+        if(timeToGlobe < 0)
+        {
+            return new AxisAlignedBB(pos, pos.add(1, 1, 1));
+        }
+        else
+        {
+            return new AxisAlignedBB(pos.add(-radius, -radius, -radius), pos.add(radius + 1, radius + 1, radius + 1));
+        }
     }
 }

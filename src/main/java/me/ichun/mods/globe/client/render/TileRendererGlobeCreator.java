@@ -161,7 +161,7 @@ public class TileRendererGlobeCreator extends TileEntitySpecialRenderer<TileEnti
 
                 GlStateManager.color(0F, 1F, 1F, 0.5F * bigProg - 0.5F * smallProg);
 
-                double scale2 = (1D + (te.radius * 2)) * 16D;
+                double scale2 = (1D + (te.radius * 2)) * 16D + 0.0001D;
 
                 GlStateManager.scale(scale2, scale2, scale2);
 

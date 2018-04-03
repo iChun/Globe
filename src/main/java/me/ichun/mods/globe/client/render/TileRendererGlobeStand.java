@@ -1,6 +1,7 @@
 package me.ichun.mods.globe.client.render;
 
 import me.ichun.mods.globe.client.model.ModelGlobeStand;
+import me.ichun.mods.globe.client.model.ModelStand;
 import me.ichun.mods.globe.common.tileentity.TileEntityGlobeStand;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
@@ -26,12 +27,14 @@ import java.util.HashSet;
 public class TileRendererGlobeStand extends TileEntitySpecialRenderer<TileEntityGlobeStand>
 {
     public static final ResourceLocation txGlobeStand = new ResourceLocation("globe", "textures/model/stand.png");
+    public static final ResourceLocation txStand = new ResourceLocation("globe", "textures/model/stand_actual.png");
 
     public static int renderLevel = 0;
 
     public static HashSet<Class<? extends TileEntity>> classesNotToRender = new HashSet<>();
 
     public static ModelGlobeStand modelGlobeStand = new ModelGlobeStand();
+    public static ModelStand modelStand = new ModelStand();
 
     @Override
     public void render(TileEntityGlobeStand gs, double px, double py, double pz, float partialTicks, int destroyStage, float alpha)
@@ -40,22 +43,51 @@ public class TileRendererGlobeStand extends TileEntitySpecialRenderer<TileEntity
 
         GlStateManager.translate(px + 0.5D, py + 0.5D, pz + 0.5D);
 
-        GlStateManager.translate(0, Math.sin(Math.toRadians((getWorld().getWorldTime() + partialTicks) * 5)) * 0.1D, 0); //bobbing
+        if(gs != null)
+        {
+            int i = gs.getWorld().getCombinedLight(gs.getPos(), 0);
+            float f = (float)(i & 65535);
+            float f1 = (float)(i >> 16);
+            OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, f, f1);
+        }
 
-        GlStateManager.rotate((getWorld().getWorldTime() + partialTicks) * 2L, 0, 1, 0); //rotation
+        if(gs == null || gs.isStand)
+        {
+            GlStateManager.pushMatrix();
+            GlStateManager.translate(0, -0.375D, 0);
+            GlStateManager.scale(1F, -1F, -1F);
+            bindTexture(txStand);
+            modelStand.render(0.0625F);
+            if(gs != null)
+            {
+                OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, 240F, 240F);
+            }
+            modelStand.base1.render(0.0625F);
+            if(gs != null)
+            {
+                int i = gs.getWorld().getCombinedLight(gs.getPos(), 0);
+                float f = (float)(i & 65535);
+                float f1 = (float)(i >> 16);
+                OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, f, f1);
+            }
+            GlStateManager.popMatrix();
+        }
 
-//        int i = gs.getWorld().getLight(gs.getPos().add(0, 1, 0), true);
-//        int j = i % 65536;
-//        int k = i / 65536;
-//        OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, (float)j, (float)k);
+        if(gs != null && gs.itemTag != null)
+        {
+            if(gs.isStand)
+            {
+                GlStateManager.translate(gs.disX, Math.sin(Math.toRadians(gs.prevBobProg + (gs.bobProg - gs.prevBobProg) * partialTicks)) * 0.05D + 0.05D, gs.disZ); //bobbing
+            }
+            else
+            {
+                GlStateManager.translate(0, -0.25D, 0);
+            }
 
-        int i = gs.getWorld().getCombinedLight(gs.getPos(), 0);
-        float f = (float)(i & 65535);
-        float f1 = (float)(i >> 16);
-        OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, f, f1);
+            GlStateManager.rotate(gs.prevRotation + (gs.rotation - gs.prevRotation) * partialTicks, 0, 1, 0); //rotation
 
-        drawGlobe(gs.getWorld(), true, true, true, gs.itemTag, gs.renderingTiles, gs.getPos(), partialTicks);
-
+            drawGlobe(gs.getWorld(), true, true, true, gs.itemTag, gs.renderingTiles, gs.getPos(), partialTicks);
+        }
         GlStateManager.popMatrix();
     }
 
