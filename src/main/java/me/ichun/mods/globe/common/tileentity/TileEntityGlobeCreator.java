@@ -14,13 +14,11 @@ import net.minecraft.nbt.NBTUtil;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.play.server.SPacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.EntitySelectors;
-import net.minecraft.util.EnumFacing;
-import net.minecraft.util.ITickable;
-import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.*;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.EnumSkyBlock;
+import net.minecraftforge.common.util.FakePlayer;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -32,7 +30,8 @@ import java.util.List;
 
 public class TileEntityGlobeCreator extends TileEntity implements ITickable
 {
-    public static final int GLOBE_TIME = 200;
+    public static final int GLOBE_TIME = 200; //TODO blacklist blocks
+    public static final DamageSource ds = new DamageSource("globe.globeProcess").setDamageBypassesArmor();
 
     public boolean hasGlobe;
     public int timeToGlobe;
@@ -48,6 +47,7 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
 
     public boolean globed;
     public int lastLight;
+    public static boolean soundCached;
 
     public TileEntityGlobeCreator()
     {
@@ -60,6 +60,12 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
     @Override
     public void update()
     {
+        if(!soundCached && world.isRemote)
+        {
+            soundCached = true;
+            world.playSound(null, pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D, Globe.soundChargeup, SoundCategory.BLOCKS, 0.0005F, 1F);
+            world.playSound(null, pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D, Globe.soundDing, SoundCategory.BLOCKS, 0.0005F, 1F);
+        }
         if(timeToGlobe > 0)
         {
             timeToGlobe--;
@@ -103,6 +109,26 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
                         }
                     }
 
+                    for(int x = -radius; x <= radius; x++)
+                    {
+                        for(int y = -radius; y <= radius; y++)
+                        {
+                            for(int z = -radius; z <= radius; z++)
+                            {
+                                if(x == 0 && y == 0 && z == 0)
+                                {
+                                    continue;
+                                }
+                                BlockPos refPos = getPos().add(x, y, z);
+                                IBlockState state = world.getBlockState(refPos);
+                                if(!(state.getMaterial() == Material.AIR || state.getBlockHardness(world, refPos) < 0))
+                                {
+                                    world.setBlockToAir(refPos);
+                                }
+                            }
+                        }
+                    }
+
                     List<Entity> entities = world.getEntitiesWithinAABB(Entity.class, new AxisAlignedBB(getPos()).grow(radius, radius, radius));
 
                     int playerCount = 0;
@@ -111,6 +137,10 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
                     {
                         if(ent instanceof EntityPlayer)
                         {
+                            if(ent instanceof FakePlayer) //TODO proper fake player checks
+                            {
+                                continue;
+                            }
                             NBTTagCompound tag = new NBTTagCompound();
                             ent.writeToNBT(tag);
                             NBTTagCompound nbttagcompound = new NBTTagCompound();
@@ -118,6 +148,11 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
                             tag.setTag("Globe_GamePlofile", nbttagcompound);
                             itemTag.setTag("player" + playerCount, tag);
                             playerCount++;
+
+                            if(!(((EntityPlayer)ent).capabilities.isCreativeMode || ((EntityPlayer)ent).isSpectator()))
+                            {
+                                ent.attackEntityFrom(ds, 1000000F);
+                            }
                         }
                         else
                         {
@@ -126,6 +161,7 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
                             {
                                 itemTag.setTag("ent" + entityCount, tag);
                                 entityCount++;
+                                ent.setDead();
                             }
                         }
                     }
@@ -134,9 +170,6 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
 
                     IBlockState state = world.getBlockState(pos);
                     world.notifyBlockUpdate(pos, state, state, 3);
-
-                    //TODO remove the blocks
-                    //TODO kill off the entities
                 }
             }
             else if(timeToGlobe == 0)
@@ -156,6 +189,7 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
 
                     world.setBlockToAir(pos);
                 }
+                world.playSound(null, pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D, Globe.soundDing, SoundCategory.BLOCKS, 0.3F, 1F);
             }
             if(world.isRemote)
             {

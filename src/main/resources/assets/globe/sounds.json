@@ -1,0 +1,22 @@
+{
+  "amb": {
+    "category": "block",
+    "sounds": [
+      "globe:amb"
+    ]
+  },
+  "chargeup": {
+    "category": "block",
+    "sounds": [
+      "globe:chargeup"
+    ],
+    "subtitle": "subtitles.globe.chargeup"
+  },
+  "ding": {
+    "category": "block",
+    "sounds": [
+      "globe:ding"
+    ],
+    "subtitle": "subtitles.globe.ding"
+  }
+}

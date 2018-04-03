@@ -2,6 +2,7 @@ package me.ichun.mods.globe.common.block;
 
 import me.ichun.mods.globe.common.Globe;
 import me.ichun.mods.globe.common.tileentity.TileEntityGlobeCreator;
+import me.ichun.mods.globe.common.tileentity.TileEntityGlobeStand;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockContainer;
 import net.minecraft.block.ITileEntityProvider;
@@ -25,6 +26,8 @@ public class BlockGlobeCreator extends Block implements ITileEntityProvider
     public BlockGlobeCreator()
     {
         super(Material.IRON);
+        setHardness(5.0F);
+        setResistance(10.0F);
         setRegistryName(new ResourceLocation("globe", "globe_creator"));
         setUnlocalizedName("globe.block.globeCreator");
         setCreativeTab(CreativeTabs.DECORATIONS);
@@ -61,19 +64,57 @@ public class BlockGlobeCreator extends Block implements ITileEntityProvider
                     return true;
                 }
             }
-            else if(gc.timeToGlobe < 0)
+            else if(gc.timeToGlobe < 0 && !gc.globed)
             {
                 if(!world.isRemote)
                 {
                     gc.timeToGlobe = gc.totalGlobeTime = TileEntityGlobeCreator.GLOBE_TIME;
                     gc.radius = 3;
                     world.notifyBlockUpdate(pos, state, state, 3);
+                    world.playSound(null, pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D, Globe.soundChargeup, SoundCategory.BLOCKS, 0.3F, 1F);
                 }
                 return true;
             }
         }
         return false;
     }
+
+    @Override
+    public float getBlockHardness(IBlockState blockState, World world, BlockPos pos)
+    {
+        TileEntity te = world.getTileEntity(pos);
+        if(te instanceof TileEntityGlobeCreator)
+        {
+            TileEntityGlobeCreator gc = (TileEntityGlobeCreator)te;
+            if(gc.globed || gc.timeToGlobe >= 0)
+            {
+                return -1F; // you can't break it if the globing process has started
+            }
+        }
+        return this.blockHardness;
+    }
+
+    @Override
+    public void onBlockClicked(World world, BlockPos pos, EntityPlayer player)
+    {
+        if(player.capabilities.isCreativeMode)
+        {
+            return;
+        }
+        TileEntity te = world.getTileEntity(pos);
+        if(te instanceof TileEntityGlobeCreator)
+        {
+            TileEntityGlobeCreator gc = (TileEntityGlobeCreator)te;
+            if(!gc.globed && gc.timeToGlobe < 0 && gc.hasGlobe && player.inventory.addItemStackToInventory(new ItemStack(Globe.itemGlobe, 1, 0)))
+            {
+                gc.hasGlobe = false;
+                IBlockState state = world.getBlockState(pos);
+                world.notifyBlockUpdate(pos, state, state, 3);
+            }
+        }
+    }
+
+    //TODO getpickblock
 
     @Override
     public int getLightValue(IBlockState state, IBlockAccess world, BlockPos pos)
@@ -88,6 +129,21 @@ public class BlockGlobeCreator extends Block implements ITileEntityProvider
             }
         }
         return state.getLightValue();
+    }
+
+    @Override
+    public void getDrops(NonNullList<ItemStack> drops, IBlockAccess world, BlockPos pos, IBlockState state, int fortune)
+    {
+        TileEntity te = world.getTileEntity(pos);
+        if(te instanceof TileEntityGlobeCreator)
+        {
+            TileEntityGlobeCreator gs = (TileEntityGlobeCreator)te;
+            if(gs.hasGlobe)
+            {
+                drops.add(new ItemStack(Globe.itemGlobe, 1, 0));
+            }
+            drops.add(new ItemStack(Globe.blockGlobeCreator, 1));
+        }
     }
 
     @Override

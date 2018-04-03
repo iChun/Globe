@@ -1,6 +1,7 @@
 package me.ichun.mods.globe.common.block;
 
 import me.ichun.mods.globe.common.Globe;
+import me.ichun.mods.globe.common.tileentity.TileEntityGlobeCreator;
 import me.ichun.mods.globe.common.tileentity.TileEntityGlobeStand;
 import net.minecraft.block.Block;
 import net.minecraft.block.ITileEntityProvider;
@@ -32,6 +33,8 @@ public class BlockGlobeStand extends Block implements ITileEntityProvider
     public BlockGlobeStand()
     {
         super(Material.IRON);
+        setHardness(5.0F);
+        setResistance(10.0F);
         setRegistryName(new ResourceLocation("globe", "globe_stand"));
         setUnlocalizedName("globe.block.globeStand");
         setCreativeTab(CreativeTabs.DECORATIONS);
@@ -101,6 +104,41 @@ public class BlockGlobeStand extends Block implements ITileEntityProvider
             }
         }
         return null;
+    }
+
+    @Override
+    public void onBlockClicked(World world, BlockPos pos, EntityPlayer player)
+    {
+        if(player.capabilities.isCreativeMode)
+        {
+            return;
+        }
+        TileEntity te = world.getTileEntity(pos);
+        if(te instanceof TileEntityGlobeStand)
+        {
+            TileEntityGlobeStand gc = (TileEntityGlobeStand)te;
+            if(gc.itemTag != null)
+            {
+                ItemStack is = gc.itemTag.hasNoTags() ? new ItemStack(Globe.itemGlobe, 1, 0) : new ItemStack(Globe.itemGlobe, 1, 1);
+                if(!gc.itemTag.hasNoTags())
+                {
+                    is.setTagCompound(gc.itemTag);
+                }
+                if(player.inventory.addItemStackToInventory(is))
+                {
+                    gc.itemTag = null;
+                    if(gc.isStand)
+                    {
+                        IBlockState state = world.getBlockState(pos);
+                        world.notifyBlockUpdate(pos, state, state, 3);
+                    }
+                    else
+                    {
+                        world.setBlockToAir(pos);
+                    }
+                }
+            }
+        }
     }
 
     @Override

@@ -214,6 +214,7 @@ public class TileRendererGlobeStand extends TileEntitySpecialRenderer<TileEntity
                         {
                             ent.posY += 500D;
                         }
+                        ent.noClip = true;
                         ent.onUpdate();
                         if(ent instanceof EntityLivingBase)
                         {

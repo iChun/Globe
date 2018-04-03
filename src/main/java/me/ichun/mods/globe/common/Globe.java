@@ -4,6 +4,7 @@ import me.ichun.mods.globe.common.core.EventHandlerServer;
 import me.ichun.mods.globe.common.core.ProxyCommon;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
+import net.minecraft.util.SoundEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.SidedProxy;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
@@ -30,6 +31,10 @@ public class Globe
     public static Block blockGlobeCreator;
     public static Block blockGlobeStand;
     public static Item itemGlobe;
+
+    public static SoundEvent soundAmb;
+    public static SoundEvent soundChargeup;
+    public static SoundEvent soundDing;
 
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event)

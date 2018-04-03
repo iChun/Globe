@@ -7,6 +7,8 @@ import me.ichun.mods.globe.common.item.ItemGlobe;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemBlock;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.SoundEvent;
 import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 
@@ -34,4 +36,19 @@ public class EventHandlerServer
         Globe.proxy.applyItemRenderers();
     }
 
+    @SubscribeEvent
+    public void onRegisterSound(RegistryEvent.Register<SoundEvent> event)
+    {
+        ResourceLocation rs = new ResourceLocation("globe", "chargeup");
+        Globe.soundChargeup = new SoundEvent(rs).setRegistryName(rs);
+        event.getRegistry().register(Globe.soundChargeup);
+
+        rs = new ResourceLocation("globe", "amb");
+        Globe.soundAmb = new SoundEvent(rs).setRegistryName(rs);
+        event.getRegistry().register(Globe.soundAmb);
+
+        rs = new ResourceLocation("globe", "ding");
+        Globe.soundDing = new SoundEvent(rs).setRegistryName(rs);
+        event.getRegistry().register(Globe.soundDing);
+    }
 }
