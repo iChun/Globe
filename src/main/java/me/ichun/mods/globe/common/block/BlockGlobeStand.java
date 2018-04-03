@@ -104,6 +104,21 @@ public class BlockGlobeStand extends Block implements ITileEntityProvider
     }
 
     @Override
+    public int getLightValue(IBlockState state, IBlockAccess world, BlockPos pos)
+    {
+        TileEntity te = world.getTileEntity(pos);
+        if(te instanceof TileEntityGlobeStand)
+        {
+            TileEntityGlobeStand gs = (TileEntityGlobeStand)te;
+            if(gs.isStand)
+            {
+                return 7;
+            }
+        }
+        return 0;
+    }
+
+    @Override
     public boolean onBlockActivated(World world, BlockPos pos, IBlockState state, EntityPlayer playerIn, EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ)
     {
         TileEntity te = world.getTileEntity(pos);

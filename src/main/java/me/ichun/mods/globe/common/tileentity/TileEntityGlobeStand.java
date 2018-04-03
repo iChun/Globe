@@ -16,20 +16,17 @@ public class TileEntityGlobeStand extends TileEntity implements ITickable
     @SideOnly(Side.CLIENT)
     public HashMap<String, TileEntity> renderingTiles = new HashMap<>();
 
-    public NBTTagCompound itemTag;
+    public NBTTagCompound itemTag; //TODO dyeable glass
 
     public boolean isStand;
 
     public float disX;
-    public float disY;
     public float disZ;
 
     public float prevDisX;
-    public float prevDisY;
     public float prevDisZ;
 
     public float rubberbandX;
-    public float rubberbandY;
     public float rubberbandZ;
 
     public float bobAmp;
@@ -67,7 +64,6 @@ public class TileEntityGlobeStand extends TileEntity implements ITickable
             rotateFactor *= 0.999F;
 
             prevDisX = disX;
-            prevDisY = disY;
             prevDisZ = disZ;
 
             prevBobProg = bobProg;
@@ -132,7 +128,7 @@ public class TileEntityGlobeStand extends TileEntity implements ITickable
         }
         isStand = tag.getBoolean("isStand");
         rotateFactor = tag.getFloat("rotateFactor");
-        rotation = tag.getFloat("rotation");
-        bobProg = tag.getFloat("bobProg");
+        prevRotation = rotation = tag.getFloat("rotation");
+        prevBobProg = bobProg = tag.getFloat("bobProg");
     }
 }

@@ -13,6 +13,8 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.*;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 
 import javax.annotation.Nullable;
@@ -62,7 +64,7 @@ public class BlockGlobeCreator extends Block implements ITileEntityProvider
             {
                 if(!world.isRemote)
                 {
-                    gc.timeToGlobe = gc.totalGlobeTime = 200;
+                    gc.timeToGlobe = gc.totalGlobeTime = TileEntityGlobeCreator.GLOBE_TIME;
                     gc.radius = 3;
                     world.notifyBlockUpdate(pos, state, state, 3);
                 }
@@ -70,6 +72,21 @@ public class BlockGlobeCreator extends Block implements ITileEntityProvider
             }
         }
         return false;
+    }
+
+    @Override
+    public int getLightValue(IBlockState state, IBlockAccess world, BlockPos pos)
+    {
+        TileEntity te = world.getTileEntity(pos);
+        if(te instanceof TileEntityGlobeCreator)
+        {
+            TileEntityGlobeCreator gc = (TileEntityGlobeCreator)te;
+            if(gc.timeToGlobe >= 12)
+            {
+                return (int)(MathHelper.clamp(1.0F - (gc.timeToGlobe - 10) / (gc.totalGlobeTime - 10F), 0F, 1F) * 15F * MathHelper.clamp((gc.radius * 2 + 4) / 15F, 0F, 1F));
+            }
+        }
+        return 0;
     }
 
     @Override

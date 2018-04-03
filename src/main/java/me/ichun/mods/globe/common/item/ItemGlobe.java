@@ -62,6 +62,8 @@ public class ItemGlobe extends Item
                 if(gs.itemTag == null)
                 {
                     gs.itemTag = itemstack.hasTagCompound() ? itemstack.getTagCompound() : new NBTTagCompound();
+                    int i = MathHelper.floor((double)(player.rotationYaw * 4.0F / 360.0F) + 0.5D) & 3;
+                    gs.prevRotation = gs.rotation = -90 * i;
                     gs.markDirty();
                     IBlockState state = worldIn.getBlockState(offset);
                     worldIn.notifyBlockUpdate(offset, state, state, 3);

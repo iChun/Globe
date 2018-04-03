@@ -10,10 +10,12 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.NetworkManager;
 import net.minecraft.network.play.server.SPacketUpdateTileEntity;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.EnumFacing;
 import net.minecraft.util.ITickable;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.EnumSkyBlock;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -23,6 +25,8 @@ import java.util.HashMap;
 
 public class TileEntityGlobeCreator extends TileEntity implements ITickable
 {
+    public static final int GLOBE_TIME = 200;
+
     public boolean hasGlobe;
     public int timeToGlobe;
     public int totalGlobeTime;
@@ -33,6 +37,7 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
     public HashMap<String, TileEntity> renderingTEs;
 
     public boolean globed;
+    public int lastLight;
 
     public TileEntityGlobeCreator()
     {
@@ -100,7 +105,6 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
                 if(!world.isRemote)
                 {
                     ItemStack is = new ItemStack(Globe.itemGlobe, 1, 1);
-                    itemTag = new NBTTagCompound();
                     itemTag.setString("identification", RandomStringUtils.randomAlphanumeric(20));
                     itemTag.setLong("source", getPos().toLong());
 
@@ -112,6 +116,15 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
 
                     world.setBlockToAir(pos);
                 }
+            }
+            if(world.isRemote)
+            {
+                int newLight = Globe.blockGlobeCreator.getLightValue(world.getBlockState(pos), world, pos);
+                if(newLight != lastLight)
+                {
+                    world.checkLight(pos);
+                }
+                lastLight = newLight;
             }
         }
     }
