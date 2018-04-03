@@ -25,6 +25,8 @@ public class EventHandlerClient
     public HashMap<ItemStack, ItemGlobeRenderer.ItemRenderContainer> itemRenderContainers = new HashMap<>();
     public HashMap<UUID, NetworkPlayerInfo> networkPlayerInfos = new HashMap<>();
 
+    public int ticks;
+
     @SubscribeEvent
     public void onModelRegistry(ModelRegistryEvent event)
     {
@@ -68,6 +70,7 @@ public class EventHandlerClient
     {
         if(event.phase == TickEvent.Phase.END)
         {
+            ticks++;
             Iterator<Map.Entry<ItemStack, ItemGlobeRenderer.ItemRenderContainer>> ite = itemRenderContainers.entrySet().iterator();
             while(ite.hasNext())
             {

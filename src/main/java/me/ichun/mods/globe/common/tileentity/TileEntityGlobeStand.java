@@ -44,6 +44,9 @@ public class TileEntityGlobeStand extends TileEntity implements ITickable
     public float prevRotation;
 
     public boolean updateLighting;
+    public int ticks;
+
+    public int snowTime; //5 seconds
 
     public TileEntityGlobeStand()
     {
@@ -55,11 +58,13 @@ public class TileEntityGlobeStand extends TileEntity implements ITickable
         disX = disZ = 0F;
         this.itemTag = itemTag;
         this.isStand = isStand;
+        snowTime = 0;
     }
 
     @Override
     public void update()
     {
+        ticks++;
         if(!isStand)
         {
             rotateFactor = bobProg = bobAmp = 0F;
@@ -70,6 +75,10 @@ public class TileEntityGlobeStand extends TileEntity implements ITickable
         }
         if(itemTag != null)
         {
+            if(snowTime > 0)
+            {
+                snowTime--;
+            }
             prevRotation = rotation;
             rotation += rotateFactor;
 

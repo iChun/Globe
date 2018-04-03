@@ -47,7 +47,7 @@ public class ItemGlobeRenderer extends TileEntityItemStackRenderer
                 container = Globe.eventHandlerClient.itemRenderContainers.computeIfAbsent(is, k -> new ItemRenderContainer());
                 container.lastRenderInTicks = 0;
             }
-            TileRendererGlobeStand.drawGlobe(Minecraft.getMinecraft().world, true, true, Minecraft.getMinecraft().player != null && (Minecraft.getMinecraft().player.getHeldItemMainhand() == is || Minecraft.getMinecraft().player.getHeldItemOffhand() == is) && is.hasTagCompound(), is.getTagCompound(), is.hasTagCompound() ? container.tileEntityMap : null, is.hasTagCompound() ? container.entities : null, BlockPos.ORIGIN, Minecraft.getMinecraft().getRenderViewEntity() != null ? -(Minecraft.getMinecraft().getRenderViewEntity().prevRotationYaw + (Minecraft.getMinecraft().getRenderViewEntity().rotationYaw - Minecraft.getMinecraft().getRenderViewEntity().prevRotationYaw) * partialTicks) + 180F : 0F, partialTicks);
+            TileRendererGlobeStand.drawGlobe(Minecraft.getMinecraft().world, true, true, Minecraft.getMinecraft().player != null && (Minecraft.getMinecraft().player.getHeldItemMainhand() == is || Minecraft.getMinecraft().player.getHeldItemOffhand() == is) && is.hasTagCompound(), is.getTagCompound(), is.hasTagCompound() ? container.tileEntityMap : null, is.hasTagCompound() ? container.entities : null, BlockPos.ORIGIN, 0, 0, Minecraft.getMinecraft().getRenderViewEntity() != null ? -(Minecraft.getMinecraft().getRenderViewEntity().prevRotationYaw + (Minecraft.getMinecraft().getRenderViewEntity().rotationYaw - Minecraft.getMinecraft().getRenderViewEntity().prevRotationYaw) * partialTicks) + 180F : 0F, partialTicks);
             GlStateManager.popMatrix();
         }
     }

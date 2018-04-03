@@ -8,6 +8,7 @@ import com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService;
 import me.ichun.mods.globe.client.core.EventHandlerClient;
 import me.ichun.mods.globe.client.model.ModelGlobeStand;
 import me.ichun.mods.globe.client.model.ModelStand;
+import me.ichun.mods.globe.common.Globe;
 import me.ichun.mods.globe.common.tileentity.TileEntityGlobeStand;
 import net.minecraft.block.Block;
 import net.minecraft.block.state.IBlockState;
@@ -23,11 +24,6 @@ import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityList;
 import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.monster.EntityCreeper;
-import net.minecraft.entity.passive.EntityChicken;
-import net.minecraft.entity.passive.EntityCow;
-import net.minecraft.entity.passive.EntityHorse;
-import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTUtil;
@@ -43,12 +39,14 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Random;
 import java.util.UUID;
 
 public class TileRendererGlobeStand extends TileEntitySpecialRenderer<TileEntityGlobeStand>
 {
     public static final ResourceLocation txGlobeStand = new ResourceLocation("globe", "textures/model/stand.png");
     public static final ResourceLocation txStand = new ResourceLocation("globe", "textures/model/stand_actual.png");
+    public static final ResourceLocation txSnow = new ResourceLocation("textures/environment/snow.png");
 
     public static MinecraftSessionService sessionService;
 
@@ -110,12 +108,12 @@ public class TileRendererGlobeStand extends TileEntitySpecialRenderer<TileEntity
             float rot = gs.prevRotation + (gs.rotation - gs.prevRotation) * partialTicks;
             GlStateManager.rotate(rot, 0, 1, 0); //rotation
 
-            drawGlobe(gs.getWorld(), true, true, true, gs.itemTag, gs.renderingTiles, gs.renderingEnts, gs.getPos(), rot, partialTicks);
+            drawGlobe(gs.getWorld(), true, true, true, gs.itemTag, gs.renderingTiles, gs.renderingEnts, gs.getPos(), gs.snowTime, gs.ticks, rot, partialTicks);
         }
         GlStateManager.popMatrix();
     }
 
-    public static void drawGlobe(World world, boolean drawBase, boolean drawGlass, boolean drawInternal, NBTTagCompound gsTag, HashMap<String, TileEntity> tileEntityMap, HashSet<Entity> entities, BlockPos gsPos, float rotation, float partialTicks)
+    public static void drawGlobe(World world, boolean drawBase, boolean drawGlass, boolean drawInternal, NBTTagCompound gsTag, HashMap<String, TileEntity> tileEntityMap, HashSet<Entity> entities, BlockPos gsPos, int snowTime, int ticks, float rotation, float partialTicks)
     {
         if(drawInternal && gsTag != null && gsTag.getInteger("radius") > 0 && renderLevel < 2)
         {
@@ -125,6 +123,84 @@ public class TileRendererGlobeStand extends TileEntitySpecialRenderer<TileEntity
             int radius = gsTag.getInteger("radius");
             float scale = 0.05F * (3F / radius);
             GlStateManager.scale(scale, scale, scale);
+
+            Minecraft mc = Minecraft.getMinecraft();
+
+            float f = MathHelper.clamp((snowTime - partialTicks) / 40F, 0F, 1F);
+
+            if (f > 0.0F)
+            {
+                int i = 0;
+                int j = 0;
+                int k = 0;
+                Tessellator tessellator = Tessellator.getInstance();
+                BufferBuilder bufferbuilder = tessellator.getBuffer();
+                GlStateManager.disableCull();
+                GlStateManager.glNormal3f(0.0F, 1.0F, 0.0F);
+                GlStateManager.enableBlend();
+                GlStateManager.tryBlendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
+                GlStateManager.alphaFunc(516, 0.1F);
+                int i1 = radius - 1;
+                int i4 = (world.getCombinedLight(gsPos, 0) * 3 + 15728880) / 4;
+                int j4 = i4 >> 16 & 65535;
+                int k4 = i4 & 65535;
+
+                for(int ll = 0; ll < 2; ll++)
+                {
+                    GlStateManager.pushMatrix();
+                    GlStateManager.rotate(90F * ll, 0F, 1F, 0F);
+                    GlStateManager.translate(-0.5D, 0D, -0.5D);
+
+                    int j1 = -1;
+                    float f1 = (float)(ticks) + partialTicks;
+                    GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
+
+                    for(int k1 = k - i1; k1 <= k + i1; ++k1)
+                    {
+                        for(int l1 = i - i1; l1 <= i + i1; ++l1)
+                        {
+                            double d3 = (double)radius * 0.5D;
+                            double d4 = (double)radius * 0.5D;
+                            int k2 = j - i1 - 1;
+                            int l2 = j + i1 + 3;
+
+                            Random rand = new Random((long)(l1 * l1 * 3121 + l1 * 45238971 ^ k1 * k1 * 418711 + k1 * 13761));
+
+                            if(j1 != 1)
+                            {
+                                j1 = 1;
+                                mc.getTextureManager().bindTexture(txSnow);
+                                bufferbuilder.begin(7, DefaultVertexFormats.PARTICLE_POSITION_TEX_COLOR_LMAP);
+                            }
+
+                            double d8 = (double)(-((float)(mc.world.getWorldTime() & 511) + partialTicks) / 512.0F);
+                            double d9 = rand.nextDouble() + (double)f1 * 0.01D * (double)((float)rand.nextGaussian());
+                            double d10 = rand.nextDouble() + (double)(f1 * (float)rand.nextGaussian()) * 0.001D;
+                            double d11 = (double)((float)l1 + 0.5F);
+                            double d12 = (double)((float)k1 + 0.5F);
+                            float f6 = MathHelper.sqrt(d11 * d11 + d12 * d12) / (float)i1;
+                            float f5 = ((1.0F - f6 * f6) * 0.3F + 0.5F) * f;
+                            bufferbuilder.pos((double)l1 - d3 + 0.5D, (double)l2, (double)k1 - d4 + 0.5D).tex(0.0D + d9, (double)k2 * 0.25D + d8 + d10).color(1.0F, 1.0F, 1.0F, f5).lightmap(j4, k4).endVertex();
+                            bufferbuilder.pos((double)l1 + d3 + 0.5D, (double)l2, (double)k1 + d4 + 0.5D).tex(1.0D + d9, (double)k2 * 0.25D + d8 + d10).color(1.0F, 1.0F, 1.0F, f5).lightmap(j4, k4).endVertex();
+                            bufferbuilder.pos((double)l1 + d3 + 0.5D, (double)k2, (double)k1 + d4 + 0.5D).tex(1.0D + d9, (double)l2 * 0.25D + d8 + d10).color(1.0F, 1.0F, 1.0F, f5).lightmap(j4, k4).endVertex();
+                            bufferbuilder.pos((double)l1 - d3 + 0.5D, (double)k2, (double)k1 - d4 + 0.5D).tex(0.0D + d9, (double)l2 * 0.25D + d8 + d10).color(1.0F, 1.0F, 1.0F, f5).lightmap(j4, k4).endVertex();
+                        }
+                    }
+
+                    if (j1 >= 0)
+                    {
+                        tessellator.draw();
+                    }
+
+                    GlStateManager.popMatrix();
+                }
+
+                GlStateManager.enableCull();
+                GlStateManager.disableBlend();
+                GlStateManager.alphaFunc(516, 0.1F);
+            }
+
+            //render blocks
             for(int x = -radius; x <= radius; x++)
             {
                 for(int y = -radius; y <= radius; y++)
@@ -207,6 +283,7 @@ public class TileRendererGlobeStand extends TileEntitySpecialRenderer<TileEntity
                     }
                 }
             }
+            //end render blocks
 
             //draw ents
             int entityCount = gsTag.getInteger("entityCount"); //TODO fix the entity render in GUI changing normalize

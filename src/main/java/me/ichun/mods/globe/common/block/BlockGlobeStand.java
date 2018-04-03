@@ -176,6 +176,7 @@ public class BlockGlobeStand extends Block implements ITileEntityProvider
             TileEntityGlobeStand gs = (TileEntityGlobeStand)te; //TODO snow?
             if(gs.itemTag != null)
             {
+                gs.snowTime = 200;
                 boolean flag = false;
                 ItemStack is = playerIn.getHeldItem(hand);
                 if(is.getItem() instanceof ItemBlock)
@@ -234,7 +235,7 @@ public class BlockGlobeStand extends Block implements ITileEntityProvider
                     }
                     flag = true;
                 }
-                return flag;
+                return true;
             }
         }
         return false;
