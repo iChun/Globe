@@ -21,7 +21,8 @@ public class ProxyClient extends ProxyCommon
         ClientRegistry.bindTileEntitySpecialRenderer(TileEntityGlobeCreator.class, ItemGlobeRenderer.RENDERER_GLOBE_CREATOR);
         ClientRegistry.bindTileEntitySpecialRenderer(TileEntityGlobeStand.class,ItemGlobeRenderer.RENDERER_GLOBE_STAND);
 
-        MinecraftForge.EVENT_BUS.register(new EventHandlerClient());
+        Globe.eventHandlerClient = new EventHandlerClient();
+        MinecraftForge.EVENT_BUS.register(Globe.eventHandlerClient);
     }
 
     @Override

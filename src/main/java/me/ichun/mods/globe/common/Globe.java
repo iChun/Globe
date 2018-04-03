@@ -1,5 +1,6 @@
 package me.ichun.mods.globe.common;
 
+import me.ichun.mods.globe.client.core.EventHandlerClient;
 import me.ichun.mods.globe.common.core.EventHandlerServer;
 import me.ichun.mods.globe.common.core.ProxyCommon;
 import net.minecraft.block.Block;
@@ -26,6 +27,7 @@ public class Globe
     @SidedProxy(clientSide = "me.ichun.mods.globe.client.core.ProxyClient", serverSide = "me.ichun.mods.globe.common.core.ProxyCommon")
     public static ProxyCommon proxy;
 
+    public static EventHandlerClient eventHandlerClient;
     public static EventHandlerServer eventHandlerServer;
 
     public static Block blockGlobeCreator;

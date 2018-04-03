@@ -1,11 +1,14 @@
 package me.ichun.mods.globe.client.render;
 
+import me.ichun.mods.globe.client.core.EventHandlerClient;
 import me.ichun.mods.globe.common.Globe;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.tileentity.TileEntityItemStackRenderer;
+import net.minecraft.entity.Entity;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.BlockPos;
 
 import java.util.HashMap;
@@ -38,8 +41,21 @@ public class ItemGlobeRenderer extends TileEntityItemStackRenderer
             GlStateManager.pushMatrix();
             GlStateManager.translate(0.5F, 0.5F, 0.5F);
             GlStateManager.scale(1.5F, 1.5F, 1.5F);
-            TileRendererGlobeStand.drawGlobe(Minecraft.getMinecraft().world, true, true, Minecraft.getMinecraft().player != null && (Minecraft.getMinecraft().player.getHeldItemMainhand() == is || Minecraft.getMinecraft().player.getHeldItemOffhand() == is) && is.hasTagCompound(), is.getTagCompound(), is.hasTagCompound() ? new HashMap<>() : null, is.hasTagCompound() ? new HashSet<>() : null, BlockPos.ORIGIN, Minecraft.getMinecraft().getRenderViewEntity() != null ? -(Minecraft.getMinecraft().getRenderViewEntity().prevRotationYaw + (Minecraft.getMinecraft().getRenderViewEntity().rotationYaw - Minecraft.getMinecraft().getRenderViewEntity().prevRotationYaw) * partialTicks) + 180F : 0F, partialTicks); //TODO OPTIMIZE THIS.
+            ItemRenderContainer container = null;
+            if(is.hasTagCompound())
+            {
+                container = Globe.eventHandlerClient.itemRenderContainers.computeIfAbsent(is, k -> new ItemRenderContainer());
+                container.lastRenderInTicks = 0;
+            }
+            TileRendererGlobeStand.drawGlobe(Minecraft.getMinecraft().world, true, true, Minecraft.getMinecraft().player != null && (Minecraft.getMinecraft().player.getHeldItemMainhand() == is || Minecraft.getMinecraft().player.getHeldItemOffhand() == is) && is.hasTagCompound(), is.getTagCompound(), is.hasTagCompound() ? container.tileEntityMap : null, is.hasTagCompound() ? container.entities : null, BlockPos.ORIGIN, Minecraft.getMinecraft().getRenderViewEntity() != null ? -(Minecraft.getMinecraft().getRenderViewEntity().prevRotationYaw + (Minecraft.getMinecraft().getRenderViewEntity().rotationYaw - Minecraft.getMinecraft().getRenderViewEntity().prevRotationYaw) * partialTicks) + 180F : 0F, partialTicks);
             GlStateManager.popMatrix();
         }
+    }
+
+    public class ItemRenderContainer
+    {
+        public int lastRenderInTicks = 0;
+        public HashMap<String, TileEntity> tileEntityMap = new HashMap<>();
+        public HashSet<Entity> entities = new HashSet<>();
     }
 }
