@@ -255,9 +255,9 @@ public class TileRendererGlobeStand extends TileEntitySpecialRenderer<TileEntity
                                 TileEntity te = state.getBlock().createTileEntity(world, state);
                                 if(te != null)
                                 {
-                                    te.setPos(gsPos.add(0, 1, 0));
-                                    te.setWorld(world);
-                                    te.readFromNBT(teTag);
+                                    te.setPos(gsPos.add(0, 1, 0)); //todo should I change this?
+                                    te.setWorld(world);//TODO look into setWorldCreate in TileEntity. Use TileEntity.create?
+                                    te.readFromNBT(teTag); //todo this can cause a crash. check ichunutil
                                     tileEntityMap.put(coord, te);
 
                                     renderTe = te;
