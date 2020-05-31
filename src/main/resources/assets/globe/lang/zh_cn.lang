@@ -1,0 +1,10 @@
+tile.globe.block.globeCreator.name=水晶球制造框架
+tile.globe.block.globeStand.name=水晶球悬浮支架
+
+item.globe.item.globe_empty.name=水晶球 (空)
+item.globe.item.globe.name=水晶球
+
+subtitles.globe.chargeup=水晶球制作开始
+subtitles.globe.ding=水晶球制作完成
+
+death.attack.globe.globeProcess=%s 被吸进了水晶球
