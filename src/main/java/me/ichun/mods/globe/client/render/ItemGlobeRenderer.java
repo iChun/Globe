@@ -1,58 +1,77 @@
 package me.ichun.mods.globe.client.render;
 
-import me.ichun.mods.globe.client.core.EventHandlerClient;
+import com.mojang.blaze3d.matrix.MatrixStack;
 import me.ichun.mods.globe.common.Globe;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.GlStateManager;
-import net.minecraft.client.renderer.tileentity.TileEntityItemStackRenderer;
+import net.minecraft.client.renderer.IRenderTypeBuffer;
+import net.minecraft.client.renderer.tileentity.ItemStackTileEntityRenderer;
 import net.minecraft.entity.Entity;
-import net.minecraft.item.ItemBlock;
+import net.minecraft.item.BlockItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.math.BlockPos;
 
 import java.util.HashMap;
 import java.util.HashSet;
 
-public class ItemGlobeRenderer extends TileEntityItemStackRenderer
+public class ItemGlobeRenderer extends ItemStackTileEntityRenderer
 {
-    public static final TileRendererGlobeCreator RENDERER_GLOBE_CREATOR = new TileRendererGlobeCreator();
-    public static final TileRendererGlobeStand RENDERER_GLOBE_STAND = new TileRendererGlobeStand();
+    public static final ItemGlobeRenderer INSTANCE = new ItemGlobeRenderer();
+
+    public static TileRendererGlobeCreator RENDERER_GLOBE_CREATOR;
+    public static TileRendererGlobeStand RENDERER_GLOBE_STAND;
+
+    private ItemGlobeRenderer(){};
 
     @Override
-    public void renderByItem(ItemStack is, float partialTicks)
+    public void render(ItemStack is, MatrixStack stack, IRenderTypeBuffer bufferIn, int combinedLightIn, int combinedOverlayIn)
     {
-        if(is.getItem() instanceof ItemBlock)
+        float partialTicks = 0F;
+        if(is.getItem() instanceof BlockItem)
         {
-            if(((ItemBlock)is.getItem()).getBlock() == Globe.blockGlobeCreator)
+            if(((BlockItem)is.getItem()).getBlock() == Globe.Blocks.GLOBE_CREATOR.get())
             {
-                RENDERER_GLOBE_CREATOR.render(null, 0, 0, 0, 0, -1, 0.0F);
+                RENDERER_GLOBE_CREATOR.render(null, partialTicks, stack, bufferIn, combinedLightIn, combinedOverlayIn);
             }
             else
             {
-                GlStateManager.pushMatrix();
-                GlStateManager.translate(0.0F, 0.35F, 0.0F);
-                RENDERER_GLOBE_STAND.render(null, 0, 0, 0, 0, -1, 0.0F);
-                GlStateManager.popMatrix();
+                stack.push();
+                stack.translate(0.0F, 0.35F, 0.0F);
+                RENDERER_GLOBE_STAND.render(null, partialTicks, stack, bufferIn, combinedLightIn, combinedOverlayIn);
+                stack.pop();
             }
         }
-        else if(is.getItem() == Globe.itemGlobe)
+        else if(is.getItem() == Globe.Items.GLOBE.get())
         {
-            GlStateManager.pushMatrix();
-            GlStateManager.translate(0.5F, 0.5F, 0.5F);
-            GlStateManager.scale(1.5F, 1.5F, 1.5F);
+            stack.push();
+            stack.translate(0.5F, 0.5F, 0.5F);
+            stack.scale(1.5F, 1.5F, 1.5F);
             ItemRenderContainer container = null;
-            if(is.hasTagCompound())
+            if(is.hasTag())
             {
                 container = Globe.eventHandlerClient.itemRenderContainers.computeIfAbsent(is, k -> new ItemRenderContainer());
                 container.lastRenderInTicks = 0;
             }
-            TileRendererGlobeStand.drawGlobe(Minecraft.getMinecraft().world, true, true, Minecraft.getMinecraft().player != null && (Minecraft.getMinecraft().player.getHeldItemMainhand() == is || Minecraft.getMinecraft().player.getHeldItemOffhand() == is) && is.hasTagCompound(), is.getTagCompound(), is.hasTagCompound() ? container.tileEntityMap : null, is.hasTagCompound() ? container.entities : null, BlockPos.ORIGIN, 0, 0, Minecraft.getMinecraft().getRenderViewEntity() != null ? -(Minecraft.getMinecraft().getRenderViewEntity().prevRotationYaw + (Minecraft.getMinecraft().getRenderViewEntity().rotationYaw - Minecraft.getMinecraft().getRenderViewEntity().prevRotationYaw) * partialTicks) + 180F : 0F, partialTicks);
-            GlStateManager.popMatrix();
+            TileRendererGlobeStand.drawGlobe(stack,
+                    bufferIn,
+                    combinedLightIn,
+                    combinedOverlayIn,
+                    Minecraft.getInstance().world,
+                    true,
+                    true,
+                    Minecraft.getInstance().player != null && (Minecraft.getInstance().player.getHeldItemMainhand() == is || Minecraft.getInstance().player.getHeldItemOffhand() == is) && is.hasTag(),
+                    is.getTag(),
+                    is.hasTag() ? container.tileEntityMap : null,
+                    is.hasTag() ? container.entities : null,
+                    TileRendererGlobeStand.HEAVENS_ABOVE,
+                    0,
+                    0,
+                    Minecraft.getInstance().getRenderViewEntity() != null ? -(Minecraft.getInstance().getRenderViewEntity().prevRotationYaw + (Minecraft.getInstance().getRenderViewEntity().rotationYaw - Minecraft.getInstance().getRenderViewEntity().prevRotationYaw) * partialTicks) + 180F : 0F,
+                    partialTicks);
+            stack.pop();
         }
     }
 
-    public class ItemRenderContainer
+    public static class ItemRenderContainer
     {
         public int lastRenderInTicks = 0;
         public HashMap<String, TileEntity> tileEntityMap = new HashMap<>();

@@ -1,5 +1,5 @@
 {
     "variants": {
-        "normal": { "model": "globe:globe_base" }
+        "": { "model": "globe:block/globe_base" }
     }
 }

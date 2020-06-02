@@ -1,34 +1,39 @@
 package me.ichun.mods.globe.common.tileentity;
 
+import com.google.common.collect.ImmutableMap;
 import me.ichun.mods.globe.common.Globe;
-import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
 import net.minecraft.block.material.Material;
-import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.entity.item.EntityItem;
-import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.item.ItemEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.fluid.Fluid;
+import net.minecraft.fluid.Fluids;
+import net.minecraft.fluid.IFluidState;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.NBTUtil;
 import net.minecraft.network.NetworkManager;
-import net.minecraft.network.play.server.SPacketUpdateTileEntity;
+import net.minecraft.network.play.server.SUpdateTileEntityPacket;
+import net.minecraft.state.IProperty;
+import net.minecraft.state.IStateHolder;
+import net.minecraft.state.StateContainer;
+import net.minecraft.tileentity.ITickableTileEntity;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.*;
+import net.minecraft.util.DamageSource;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.SoundCategory;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.EnumSkyBlock;
 import net.minecraftforge.common.util.FakePlayer;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.apache.commons.lang3.RandomStringUtils;
 
 import javax.annotation.Nullable;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 
-public class TileEntityGlobeCreator extends TileEntity implements ITickable
+public class TileEntityGlobeCreator extends TileEntity implements ITickableTileEntity
 {
     public static final int GLOBE_TIME = 200; //TODO blacklist blocks
     public static final DamageSource ds = new DamageSource("globe.globeProcess").setDamageBypassesArmor();
@@ -37,7 +42,7 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
     public int timeToGlobe;
     public int totalGlobeTime;
     public int radius;
-    public NBTTagCompound itemTag;
+    public CompoundNBT itemTag;
 
     public HashMap<String, TileEntity> renderingTEs;
     public HashSet<Entity> renderingEnts;
@@ -48,20 +53,21 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
 
     public TileEntityGlobeCreator()
     {
+        super(Globe.TileEntityTypes.GLOBE_CREATOR.get());
         timeToGlobe = -1;
         radius = 5;
         totalGlobeTime = 0;
-        itemTag = new NBTTagCompound();
+        itemTag = new CompoundNBT();
     }
 
     @Override
-    public void update()
+    public void tick()
     {
         if(!soundCached && world.isRemote)
         {
             soundCached = true;
-            world.playSound(null, pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D, Globe.soundChargeup, SoundCategory.BLOCKS, 0.0005F, 1F);
-            world.playSound(null, pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D, Globe.soundDing, SoundCategory.BLOCKS, 0.0005F, 1F);
+            world.playSound(null, pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D, Globe.Sounds.CHARGEUP.get(), SoundCategory.BLOCKS, 0.0005F, 1F);
+            world.playSound(null, pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D, Globe.Sounds.DING.get(), SoundCategory.BLOCKS, 0.0005F, 1F);
         }
         if(timeToGlobe > 0)
         {
@@ -70,7 +76,7 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
             {
                 if(!world.isRemote)
                 {
-                    itemTag.setInteger("radius", radius);
+                    itemTag.putInt("radius", radius);
 
                     List<Entity> entities = world.getEntitiesWithinAABB(Entity.class, new AxisAlignedBB(getPos()).grow(radius, radius, radius));
 
@@ -78,37 +84,37 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
                     int entityCount = 0;
                     for(Entity ent : entities)
                     {
-                        if(ent instanceof EntityPlayer)
+                        if(ent instanceof PlayerEntity)
                         {
                             if(ent instanceof FakePlayer) //TODO proper fake player checks
                             {
                                 continue;
                             }
-                            NBTTagCompound tag = new NBTTagCompound();
-                            ent.writeToNBT(tag);
-                            NBTTagCompound nbttagcompound = new NBTTagCompound();
-                            NBTUtil.writeGameProfile(nbttagcompound, ((EntityPlayer)ent).getGameProfile());
-                            tag.setTag("Globe_GamePlofile", nbttagcompound);
-                            itemTag.setTag("player" + playerCount, tag);
+                            CompoundNBT tag = new CompoundNBT();
+                            ent.writeWithoutTypeId(tag);
+                            CompoundNBT nbttagcompound = new CompoundNBT();
+                            NBTUtil.writeGameProfile(nbttagcompound, ((PlayerEntity)ent).getGameProfile());
+                            tag.put("Globe_GameProfile", nbttagcompound);
+                            itemTag.put("player" + playerCount, tag);
                             playerCount++;
 
-                            if(!(((EntityPlayer)ent).capabilities.isCreativeMode || ((EntityPlayer)ent).isSpectator()))
+                            if(!(((PlayerEntity)ent).abilities.isCreativeMode || ent.isSpectator()))
                             {
                                 ent.attackEntityFrom(ds, 1000000F);
                             }
                         }
                         else
                         {
-                            NBTTagCompound tag = new NBTTagCompound();
-                            if(ent.writeToNBTOptional(tag))
+                            CompoundNBT tag = new CompoundNBT();
+                            if(ent.writeUnlessRemoved(tag))
                             {
-                                itemTag.setTag("ent" + entityCount, tag);
+                                itemTag.put("ent" + entityCount, tag);
                                 entityCount++;
                             }
                         }
                     }
-                    itemTag.setInteger("playerCount", playerCount);
-                    itemTag.setInteger("entityCount", entityCount);
+                    itemTag.putInt("playerCount", playerCount);
+                    itemTag.putInt("entityCount", entityCount);
 
                     for(int x = -radius; x <= radius; x++)
                     {
@@ -121,25 +127,27 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
                                     continue;
                                 }
                                 BlockPos refPos = getPos().add(x, y, z);
-                                IBlockState state = world.getBlockState(refPos);
+                                BlockState state = world.getBlockState(refPos);
                                 if(!(state.getMaterial() == Material.AIR || state.getBlockHardness(world, refPos) < 0))
                                 {
                                     StringBuilder sb = new StringBuilder().append("x").append(x).append("y").append(y).append("z").append(z);
                                     String coord = sb.toString();
-                                    NBTTagCompound coordTag = new NBTTagCompound();
-                                    Block block = state.getBlock();
-                                    ResourceLocation resourcelocation = Block.REGISTRY.getNameForObject(block);
-                                    coordTag.setString("Block", resourcelocation.toString());
-                                    coordTag.setByte("Data", (byte)state.getBlock().getMetaFromState(state));
-                                    if(block.hasTileEntity(state))
+                                    CompoundNBT coordTag = new CompoundNBT();
+                                    coordTag.put("BlockState", NBTUtil.writeBlockState(state));
+                                    if(state.hasTileEntity())
                                     {
                                         TileEntity te = world.getTileEntity(refPos);
                                         if(te != null)
                                         {
-                                            coordTag.setTag("TileEntityData", te.writeToNBT(new NBTTagCompound())); //TODO might have to change the xyz in the NBT;
+                                            coordTag.put("TileEntityData", te.write(new CompoundNBT())); //TODO might have to change the xyz in the NBT;
                                         }
                                     }
-                                    itemTag.setTag(coord, coordTag);
+                                    IFluidState fluidState = world.getFluidState(refPos);
+                                    if(!fluidState.isEmpty()) // we have a fluid
+                                    {
+                                        coordTag.put("FluidState", writeFluidState(fluidState));
+                                    }
+                                    itemTag.put(coord, coordTag);
                                 }
                             }
                         }
@@ -156,10 +164,10 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
                                     continue;
                                 }
                                 BlockPos refPos = getPos().add(x, y, z);
-                                IBlockState state = world.getBlockState(refPos);
+                                BlockState state = world.getBlockState(refPos);
                                 if(!(state.getMaterial() == Material.AIR || state.getBlockHardness(world, refPos) < 0))
                                 {
-                                    world.setBlockToAir(refPos);
+                                    world.setBlockState(refPos, Blocks.AIR.getDefaultState(), world.isRemote ? 11 : 3);
                                 }
                             }
                         }
@@ -169,13 +177,13 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
 
                     for(Entity ent : entities)
                     {
-                        if(!(ent instanceof EntityPlayer))
+                        if(!(ent instanceof PlayerEntity))
                         {
-                            ent.setDead();
+                            ent.remove();
                         }
                     }
 
-                    IBlockState state = world.getBlockState(pos);
+                    BlockState state = world.getBlockState(pos);
                     world.notifyBlockUpdate(pos, state, state, 3);
                 }
             }
@@ -184,79 +192,140 @@ public class TileEntityGlobeCreator extends TileEntity implements ITickable
                 globed = true;
                 if(!world.isRemote)
                 {
-                    ItemStack is = new ItemStack(Globe.itemGlobe, 1, 1);
-                    itemTag.setString("identification", RandomStringUtils.randomAlphanumeric(20));
-                    itemTag.setLong("source", getPos().toLong());
+                    ItemStack is = new ItemStack(Globe.Items.GLOBE.get(), 1);
+                    itemTag.putString("identification", RandomStringUtils.randomAlphanumeric(20));
+                    itemTag.putLong("source", getPos().toLong());
 
-                    is.setTagCompound(itemTag);
+                    is.setTag(itemTag);
+                    is.setDamage(1);
 
-                    EntityItem entityitem = new EntityItem(this.world, getPos().getX() + 0.5D, getPos().getY() + 0.5D, getPos().getZ() + 0.5D, is);
+                    ItemEntity entityitem = new ItemEntity(this.world, getPos().getX() + 0.5D, getPos().getY() + 0.5D, getPos().getZ() + 0.5D, is);
                     entityitem.setPickupDelay(40);
-                    world.spawnEntity(entityitem);
+                    world.addEntity(entityitem);
 
-                    world.setBlockToAir(pos);
+                    world.removeBlock(pos, false);
                 }
-                world.playSound(null, pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D, Globe.soundDing, SoundCategory.BLOCKS, 0.3F, 1F);
+                world.playSound(null, pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D, Globe.Sounds.DING.get(), SoundCategory.BLOCKS, 0.3F, 1F);
             }
             if(world.isRemote)
             {
-                int newLight = Globe.blockGlobeCreator.getLightValue(world.getBlockState(pos), world, pos);
+                int newLight = Globe.Blocks.GLOBE_CREATOR.get().getLightValue(world.getBlockState(pos), world, pos);
                 if(newLight != lastLight)
                 {
-                    world.checkLight(pos);
+                    world.getChunkProvider().getLightManager().checkBlock(pos);
                 }
                 lastLight = newLight;
             }
         }
     }
 
+    //Mostly taken from NBTUtil
+    public static IFluidState readFluidState(CompoundNBT tag) {
+        if (!tag.contains("Name", 8)) {
+            return Fluids.EMPTY.getDefaultState();
+        } else {
+            Fluid fluid = ForgeRegistries.FLUIDS.getValue(new ResourceLocation(tag.getString("Name")));
+            if(fluid == null)
+            {
+                return Fluids.EMPTY.getDefaultState();
+            }
+            IFluidState fluidState = fluid.getDefaultState();
+            if (tag.contains("Properties", 10)) {
+                CompoundNBT compoundnbt = tag.getCompound("Properties");
+                StateContainer<Fluid, IFluidState> statecontainer = fluid.getStateContainer();
+
+                for(String s : compoundnbt.keySet()) {
+                    IProperty<?> iproperty = statecontainer.getProperty(s);
+                    if (iproperty != null) {
+                        fluidState = setValueHelper(fluidState, iproperty, s, compoundnbt, tag);
+                    }
+                }
+            }
+
+            return fluidState;
+        }
+    }
+
+    private static <S extends IStateHolder<S>, T extends Comparable<T>> S setValueHelper(S p_193590_0_, IProperty<T> p_193590_1_, String p_193590_2_, CompoundNBT p_193590_3_, CompoundNBT p_193590_4_) {
+        Optional<T> optional = p_193590_1_.parseValue(p_193590_3_.getString(p_193590_2_));
+        if (optional.isPresent()) {
+            return (S)(p_193590_0_.with(p_193590_1_, (T)(optional.get())));
+        } else {
+            // LOGGER.warn("Unable to read property: {} with value: {} for blockstate: {}", p_193590_2_, p_193590_3_.getString(p_193590_2_), p_193590_4_.toString());
+            return p_193590_0_;
+        }
+    }
+
+    public static CompoundNBT writeFluidState(IFluidState tag) {
+        CompoundNBT compoundnbt = new CompoundNBT();
+        compoundnbt.putString("Name", tag.getFluid().getRegistryName().toString());
+        ImmutableMap<IProperty<?>, Comparable<?>> immutablemap = tag.getValues();
+        if (!immutablemap.isEmpty()) {
+            CompoundNBT compoundnbt1 = new CompoundNBT();
+
+            for(Map.Entry<IProperty<?>, Comparable<?>> entry : immutablemap.entrySet()) {
+                IProperty<?> iproperty = entry.getKey();
+                compoundnbt1.putString(iproperty.getName(), getName(iproperty, entry.getValue()));
+            }
+
+            compoundnbt.put("Properties", compoundnbt1);
+        }
+
+        return compoundnbt;
+    }
+
+    private static <T extends Comparable<T>> String getName(IProperty<T> p_190010_0_, Comparable<?> p_190010_1_) {
+        return p_190010_0_.getName((T)p_190010_1_);
+    }
+    //End Mostly taken from NBTUtil
+
     @Override
     @Nullable
-    public SPacketUpdateTileEntity getUpdatePacket()
+    public SUpdateTileEntityPacket getUpdatePacket()
     {
-        return new SPacketUpdateTileEntity(this.pos, 0, this.getUpdateTag());
+        return new SUpdateTileEntityPacket(this.pos, 0, this.getUpdateTag());
     }
 
     @Override
-    public NBTTagCompound getUpdateTag()
+    public CompoundNBT getUpdateTag()
     {
-        return this.writeToNBT(new NBTTagCompound());
+        return this.write(new CompoundNBT());
     }
 
     @Override
-    public void onDataPacket(NetworkManager net, SPacketUpdateTileEntity pkt)
+    public void onDataPacket(NetworkManager net, SUpdateTileEntityPacket pkt)
     {
-        this.readFromNBT(pkt.getNbtCompound());
+        this.read(pkt.getNbtCompound());
     }
 
     @Override
-    public NBTTagCompound writeToNBT(NBTTagCompound tag)
+    public CompoundNBT write(CompoundNBT tag)
     {
-        super.writeToNBT(tag);
-        tag.setBoolean("hasGlobe", hasGlobe);
-        tag.setInteger("timeToGlobe", timeToGlobe);
-        tag.setInteger("totalGlobeTime", totalGlobeTime);
-        tag.setInteger("radius", radius);
-        tag.setTag("itemTag", itemTag);
+        super.write(tag);
+        tag.putBoolean("hasGlobe", hasGlobe);
+        tag.putInt("timeToGlobe", timeToGlobe);
+        tag.putInt("totalGlobeTime", totalGlobeTime);
+        tag.putInt("radius", radius);
+        tag.put("itemTag", itemTag);
         return tag;
     }
 
     @Override
-    public void readFromNBT(NBTTagCompound tag)
+    public void read(CompoundNBT tag)
     {
-        super.readFromNBT(tag);
+        super.read(tag);
         hasGlobe = tag.getBoolean("hasGlobe");
-        timeToGlobe = tag.getInteger("timeToGlobe");
-        totalGlobeTime = tag.getInteger("totalGlobeTime");
-        radius = tag.getInteger("radius");
-        itemTag = tag.getCompoundTag("itemTag");
+        timeToGlobe = tag.getInt("timeToGlobe");
+        totalGlobeTime = tag.getInt("totalGlobeTime");
+        radius = tag.getInt("radius");
+        itemTag = tag.getCompound("itemTag");
     }
 
-    @Override
-    public boolean shouldRenderInPass(int pass)
-    {
-        return pass == 0 && timeToGlobe < 0 || pass == 1 && timeToGlobe >= 0;
-    }
+    //    @Override //TODO remember this
+    //    public boolean shouldRenderInPass(int pass)
+    //    {
+    //        return pass == 0 && timeToGlobe < 0 || pass == 1 && timeToGlobe >= 0;
+    //    }
 
     @Override
     public AxisAlignedBB getRenderBoundingBox()

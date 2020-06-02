@@ -1,25 +1,24 @@
 package me.ichun.mods.globe.common.tileentity;
 
+import me.ichun.mods.globe.common.Globe;
 import net.minecraft.entity.Entity;
-import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.network.NetworkManager;
-import net.minecraft.network.play.server.SPacketUpdateTileEntity;
+import net.minecraft.network.play.server.SUpdateTileEntityPacket;
+import net.minecraft.tileentity.ITickableTileEntity;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.ITickable;
-import net.minecraft.world.EnumSkyBlock;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraft.world.LightType;
 
 import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.HashSet;
 
-public class TileEntityGlobeStand extends TileEntity implements ITickable
+public class TileEntityGlobeStand extends TileEntity implements ITickableTileEntity
 {
     public HashMap<String, TileEntity> renderingTiles = new HashMap<>();
     public HashSet<Entity> renderingEnts = new HashSet<>();
 
-    public NBTTagCompound itemTag;
+    public CompoundNBT itemTag;
 
     public boolean isStand;
 
@@ -47,27 +46,28 @@ public class TileEntityGlobeStand extends TileEntity implements ITickable
 
     public TileEntityGlobeStand()
     {
+        super(Globe.TileEntityTypes.GLOBE_STAND.get());
         disX = disZ = 0F;
     }
 
-    public TileEntityGlobeStand(NBTTagCompound itemTag, boolean isStand)
+    public TileEntityGlobeStand(CompoundNBT itemTag, boolean isStand)
     {
-        disX = disZ = 0F;
+        this();
         this.itemTag = itemTag;
         this.isStand = isStand;
         snowTime = 0;
     }
 
     @Override
-    public void update()
+    public void tick()
     {
         ticks++;
         if(!isStand)
         {
             rotateFactor = bobProg = bobAmp = 0F;
-            if(world.getLightFor(EnumSkyBlock.BLOCK, pos) > 0)
+            if(world.getLightFor(LightType.BLOCK, pos) > 0)
             {
-                world.checkLight(pos);
+                world.getChunkProvider().getLightManager().checkBlock(pos);
             }
         }
         if(itemTag != null)
@@ -103,51 +103,51 @@ public class TileEntityGlobeStand extends TileEntity implements ITickable
         if(updateLighting)
         {
             updateLighting = false;
-            world.checkLight(pos);
+            world.getChunkProvider().getLightManager().checkBlock(pos);
         }
     }
 
     @Override
     @Nullable
-    public SPacketUpdateTileEntity getUpdatePacket()
+    public SUpdateTileEntityPacket getUpdatePacket()
     {
-        return new SPacketUpdateTileEntity(this.pos, 0, this.getUpdateTag());
+        return new SUpdateTileEntityPacket(this.pos, 0, this.getUpdateTag());
     }
 
     @Override
-    public NBTTagCompound getUpdateTag()
+    public CompoundNBT getUpdateTag()
     {
-        return this.writeToNBT(new NBTTagCompound());
+        return this.write(new CompoundNBT());
     }
 
     @Override
-    public void onDataPacket(NetworkManager net, SPacketUpdateTileEntity pkt)
+    public void onDataPacket(NetworkManager net, SUpdateTileEntityPacket pkt)
     {
-        this.readFromNBT(pkt.getNbtCompound());
+        this.read(pkt.getNbtCompound());
     }
 
     @Override
-    public NBTTagCompound writeToNBT(NBTTagCompound tag)
+    public CompoundNBT write(CompoundNBT tag)
     {
-        super.writeToNBT(tag);
+        super.write(tag);
         if(itemTag != null)
         {
-            tag.setTag("itemTag", itemTag);
+            tag.put("itemTag", itemTag);
         }
-        tag.setBoolean("isStand", isStand);
-        tag.setFloat("rotateFactor", rotateFactor);
-        tag.setFloat("rotation", rotation);
-        tag.setFloat("bobProg", bobProg);
+        tag.putBoolean("isStand", isStand);
+        tag.putFloat("rotateFactor", rotateFactor);
+        tag.putFloat("rotation", rotation);
+        tag.putFloat("bobProg", bobProg);
         return tag;
     }
 
     @Override
-    public void readFromNBT(NBTTagCompound tag)
+    public void read(CompoundNBT tag)
     {
-        super.readFromNBT(tag);
-        if(tag.hasKey("itemTag"))
+        super.read(tag);
+        if(tag.contains("itemTag"))
         {
-            itemTag = tag.getCompoundTag("itemTag");
+            itemTag = tag.getCompound("itemTag");
         }
         isStand = tag.getBoolean("isStand");
         rotateFactor = tag.getFloat("rotateFactor");

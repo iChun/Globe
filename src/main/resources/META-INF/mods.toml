@@ -1,0 +1,26 @@
+modLoader="javafml"
+loaderVersion="[31,)" #forge version dep
+issueTrackerURL="https://github.com/iChun/Globe/issues"
+
+[[mods]]
+    modId="globe"
+    version="${file.jarVersion}" #mandatory
+    displayName="Globe"
+    displayURL="http://ichun.me/mods/globe/"
+    authors="iChun"
+    description='''
+    Globe - verb - form (something) into a globe
+    '''
+
+[[dependencies.clef]]
+    modId="forge"
+    mandatory=true
+    versionRange="[31,)"
+    ordering="NONE"
+    side="BOTH"
+[[dependencies.clef]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.15.2,1.16)"
+    ordering="NONE"
+    side="BOTH"

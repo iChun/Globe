@@ -1,0 +1,11 @@
+{
+  "globe.block.globeCreator": "Schneeball Ersteller",
+  "globe.block.globeStand": "Schneeball Podest",
+  "globe.item.globe_empty": "Leerer Schneeball",
+  "globe.item.globe": "Schneeball",
+
+  "subtitles.globe.chargeup": "Schneeballifizierungsprozess gestartet",
+  "subtitles.globe.ding": "Schneeballifizierungsprozess beendet",
+
+  "death.attack.globe.globeProcess": "%s wurde in einen Schneeball gesaugt"
+}

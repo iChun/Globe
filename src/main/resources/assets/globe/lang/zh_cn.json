@@ -1,0 +1,12 @@
+{
+  "globe.block.globeCreator": "水晶球制造框架",
+  "globe.block.globeStand": "水晶球悬浮支架",
+
+  "globe.item.globe_empty": "水晶球 (空)",
+  "globe.item.globe": "水晶球",
+
+  "subtitles.globe.chargeup": "水晶球制作开始",
+  "subtitles.globe.ding": "水晶球制作完成",
+
+  "death.attack.globe.globeProcess": "%s 被吸进了水晶球"
+}

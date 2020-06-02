@@ -1,22 +1,26 @@
 package me.ichun.mods.globe.client.model;
 
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.client.model.ModelRenderer;
-import net.minecraft.entity.Entity;
+import com.mojang.blaze3d.matrix.MatrixStack;
+import com.mojang.blaze3d.vertex.IVertexBuilder;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.model.Model;
+import net.minecraft.client.renderer.model.ModelRenderer;
 
 /**
  * Stand - iChun
  * Created using Tabula 7.0.0
  */
-public class ModelStand extends ModelBase {
+public class ModelStand extends Model //StandActual.tbl
+{
     public ModelRenderer sideB;
     public ModelRenderer sideF;
     public ModelRenderer sideL;
     public ModelRenderer sideR;
     public ModelRenderer base;
-    public ModelRenderer base1;
+    public ModelRenderer base1; //shiny inside
 
     public ModelStand() {
+        super(RenderType::getEntityCutout);
         this.textureWidth = 64;
         this.textureHeight = 32;
         this.sideL = new ModelRenderer(this, 42, 0);
@@ -39,11 +43,13 @@ public class ModelStand extends ModelBase {
         this.base.addBox(-3.0F, 1.0F, -3.0F, 6, 1, 6, 0.0F);
     }
 
-    public void render(float f5) {
-        this.sideL.render(f5);
-        this.sideF.render(f5);
-        this.sideB.render(f5);
-        this.sideR.render(f5);
-        this.base.render(f5);
+    @Override
+    public void render(MatrixStack matrixStackIn, IVertexBuilder bufferIn, int packedLightIn, int packedOverlayIn, float red, float green, float blue, float alpha)
+    {
+        this.sideL.render(matrixStackIn, bufferIn, packedLightIn, packedOverlayIn, red, green, blue, alpha);
+        this.sideF.render(matrixStackIn, bufferIn, packedLightIn, packedOverlayIn, red, green, blue, alpha);
+        this.sideB.render(matrixStackIn, bufferIn, packedLightIn, packedOverlayIn, red, green, blue, alpha);
+        this.sideR.render(matrixStackIn, bufferIn, packedLightIn, packedOverlayIn, red, green, blue, alpha);
+        this.base.render(matrixStackIn, bufferIn, packedLightIn, packedOverlayIn, red, green, blue, alpha);
     }
 }

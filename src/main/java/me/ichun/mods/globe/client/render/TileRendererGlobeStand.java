@@ -5,155 +5,143 @@ import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.minecraft.MinecraftSessionService;
 import com.mojang.authlib.properties.Property;
 import com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService;
+import com.mojang.blaze3d.matrix.MatrixStack;
+import com.mojang.blaze3d.vertex.IVertexBuilder;
+import io.netty.buffer.Unpooled;
 import me.ichun.mods.globe.client.core.EventHandlerClient;
 import me.ichun.mods.globe.client.model.ModelGlobeStand;
 import me.ichun.mods.globe.client.model.ModelStand;
-import me.ichun.mods.globe.common.Globe;
+import me.ichun.mods.globe.common.tileentity.TileEntityGlobeCreator;
 import me.ichun.mods.globe.common.tileentity.TileEntityGlobeStand;
 import net.minecraft.block.Block;
-import net.minecraft.block.state.IBlockState;
+import net.minecraft.block.BlockRenderType;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.entity.EntityOtherPlayerMP;
-import net.minecraft.client.network.NetworkPlayerInfo;
+import net.minecraft.client.entity.player.RemoteClientPlayerEntity;
+import net.minecraft.client.network.play.NetworkPlayerInfo;
 import net.minecraft.client.renderer.*;
-import net.minecraft.client.renderer.entity.Render;
-import net.minecraft.client.renderer.texture.TextureMap;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.texture.AtlasTexture;
+import net.minecraft.client.renderer.tileentity.TileEntityRenderer;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
-import net.minecraft.client.renderer.tileentity.TileEntitySpecialRenderer;
-import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
+import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityList;
-import net.minecraft.entity.EntityLivingBase;
-import net.minecraft.init.Blocks;
-import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.entity.EntityType;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.fluid.IFluidState;
+import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.NBTUtil;
+import net.minecraft.network.PacketBuffer;
+import net.minecraft.network.play.server.SPlayerListItemPacket;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.EnumBlockRenderType;
-import net.minecraft.util.ReportedException;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
+import net.minecraft.world.GameType;
 import net.minecraft.world.World;
+import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
+import net.minecraftforge.registries.ForgeRegistries;
 
+import javax.annotation.Nullable;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
 
-public class TileRendererGlobeStand extends TileEntitySpecialRenderer<TileEntityGlobeStand>
+public class TileRendererGlobeStand extends TileEntityRenderer<TileEntityGlobeStand>
 {
     public static final ResourceLocation txGlobeStand = new ResourceLocation("globe", "textures/model/stand.png");
     public static final ResourceLocation txStand = new ResourceLocation("globe", "textures/model/stand_actual.png");
-    public static final ResourceLocation txSnow = new ResourceLocation("textures/environment/snow.png");
+    public static final BlockPos HEAVENS_ABOVE =  new BlockPos(0, 1000000, 0);
 
     public static MinecraftSessionService sessionService;
 
     public static int renderLevel = 0;
 
-    public static HashSet<Class<? extends TileEntity>> classesNotToRender = new HashSet<>();
+    public static HashSet<Class<?>> classesNotToRender = new HashSet<>();
 
     public static ModelGlobeStand modelGlobeStand = new ModelGlobeStand();
     public static ModelStand modelStand = new ModelStand();
 
-    @Override
-    public void render(TileEntityGlobeStand gs, double px, double py, double pz, float partialTicks, int destroyStage, float alpha)
+    public TileRendererGlobeStand(TileEntityRendererDispatcher renderer)
     {
-        GlStateManager.pushMatrix();
+        super(renderer);
 
-        GlStateManager.translate(px + 0.5D, py + 0.5D, pz + 0.5D);
+        ItemGlobeRenderer.RENDERER_GLOBE_STAND = this;
+    }
 
-        if(gs != null)
-        {
-            int i = gs.getWorld().getCombinedLight(gs.getPos(), 0);
-            float f = (float)(i & 65535);
-            float f1 = (float)(i >> 16);
-            OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, f, f1);
-        }
+    @Override
+    public void render(@Nullable TileEntityGlobeStand gs, float partialTicks, MatrixStack stack, IRenderTypeBuffer bufferIn, int combinedLightIn, int combinedOverlayIn)
+    {
+        stack.push();
+
+        stack.translate(0.5D, 0.5D, 0.5D);
 
         if(gs == null || gs.isStand)
         {
-            GlStateManager.pushMatrix();
-            GlStateManager.translate(0, -0.375D, 0);
-            GlStateManager.scale(1F, -1F, -1F);
-            bindTexture(txStand);
-            modelStand.render(0.0625F);
-            if(gs != null)
-            {
-                OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, 240F, 240F);
-            }
-            modelStand.base1.render(0.0625F);
-            if(gs != null)
-            {
-                int i = gs.getWorld().getCombinedLight(gs.getPos(), 0);
-                float f = (float)(i & 65535);
-                float f1 = (float)(i >> 16);
-                OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, f, f1);
-            }
-            GlStateManager.popMatrix();
+            stack.push();
+            stack.translate(0, -0.375D, 0);
+            stack.scale(1F, -1F, -1F);
+
+            IVertexBuilder bufferStand = bufferIn.getBuffer(RenderType.getEntityCutout(txStand));
+            modelStand.render(stack, bufferStand, combinedLightIn, combinedOverlayIn, 1F, 1F, 1F, 1F);
+            modelStand.base1.render(stack, bufferStand, 0xf000f0, combinedOverlayIn, 1F, 1F, 1F, 1F);
+            stack.pop();
         }
 
         if(gs != null && gs.itemTag != null)
         {
             if(gs.isStand)
             {
-                GlStateManager.translate(gs.disX, Math.sin(Math.toRadians(gs.prevBobProg + (gs.bobProg - gs.prevBobProg) * partialTicks)) * 0.05D + 0.05D, gs.disZ); //bobbing
+                stack.translate(gs.disX, Math.sin(Math.toRadians(gs.prevBobProg + (gs.bobProg - gs.prevBobProg) * partialTicks)) * 0.05D + 0.05D, gs.disZ); //bobbing
             }
             else
             {
-                GlStateManager.translate(0, -0.25D, 0);
+                stack.translate(0, -0.25D, 0);
             }
 
             float rot = gs.prevRotation + (gs.rotation - gs.prevRotation) * partialTicks;
-            GlStateManager.rotate(rot, 0, 1, 0); //rotation
+            stack.rotate(Vector3f.YP.rotationDegrees(rot)); //rotation
 
-            drawGlobe(gs.getWorld(), true, true, true, gs.itemTag, gs.renderingTiles, gs.renderingEnts, gs.getPos(), gs.snowTime, gs.ticks, rot, partialTicks);
+            drawGlobe(stack, bufferIn, combinedLightIn, combinedOverlayIn, gs.getWorld(), true, true, true, gs.itemTag, gs.renderingTiles, gs.renderingEnts, gs.getPos(), gs.snowTime, gs.ticks, rot, partialTicks);
         }
-        GlStateManager.popMatrix();
+        stack.pop();
     }
 
-    public static void drawGlobe(World world, boolean drawBase, boolean drawGlass, boolean drawInternal, NBTTagCompound gsTag, HashMap<String, TileEntity> tileEntityMap, HashSet<Entity> entities, BlockPos gsPos, int snowTime, int ticks, float rotation, float partialTicks)
+    public static void drawGlobe(MatrixStack stack, IRenderTypeBuffer bufferIn, int combinedLightIn, int combinedOverlayIn, World world, boolean drawBase, boolean drawGlass, boolean drawInternal, CompoundNBT gsTag, HashMap<String, TileEntity> tileEntityMap, HashSet<Entity> entities, BlockPos gsPos, int snowTime, int ticks, float rotation, float partialTicks)
     {
-        if(drawInternal && gsTag != null && gsTag.getInteger("radius") > 0 && renderLevel < 2)
+        if(drawInternal && gsTag != null && gsTag.getInt("radius") > 0 && renderLevel < 2)
         {
             renderLevel++;
-            GlStateManager.pushMatrix();
+            stack.push();
 
-            int radius = gsTag.getInteger("radius");
+            int radius = gsTag.getInt("radius");
             float scale = 0.05F * (3F / radius);
-            GlStateManager.scale(scale, scale, scale);
-
-            Minecraft mc = Minecraft.getMinecraft();
+            stack.scale(scale, scale, scale);
 
             float f = MathHelper.clamp((snowTime - partialTicks) / 40F, 0F, 1F);
 
-            if (f > 0.0F)
+            if (f > 0.0F) //render snow
             {
                 int i = 0;
                 int j = 0;
                 int k = 0;
-                Tessellator tessellator = Tessellator.getInstance();
-                BufferBuilder bufferbuilder = tessellator.getBuffer();
-                GlStateManager.disableCull();
-                GlStateManager.glNormal3f(0.0F, 1.0F, 0.0F);
-                GlStateManager.enableBlend();
-                GlStateManager.tryBlendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
-                GlStateManager.alphaFunc(516, 0.1F);
+                IVertexBuilder buffer = bufferIn.getBuffer(RenderType.getEntityTranslucent(WorldRenderer.SNOW_TEXTURES));
+                Matrix4f matrix4f = stack.getLast().getMatrix();
+
+                //                GlStateManager.glNormal3f(0.0F, 1.0F, 0.0F); //TODO omit this?
                 int i1 = radius - 1;
-                int i4 = (world.getCombinedLight(gsPos, 0) * 3 + 15728880) / 4;
+                int i4 = (combinedLightIn * 3 + 15728880) / 4;
                 int j4 = i4 >> 16 & 65535;
                 int k4 = i4 & 65535;
 
                 for(int ll = 0; ll < 2; ll++)
                 {
-                    GlStateManager.pushMatrix();
-                    GlStateManager.rotate(90F * ll, 0F, 1F, 0F);
-                    GlStateManager.translate(-0.5D, 0D, -0.5D);
+                    stack.push();
+                    stack.rotate(Vector3f.YP.rotationDegrees(90F * ll));
+                    stack.translate(-0.5D, 0D, -0.5D);
 
-                    int j1 = -1;
                     float f1 = (float)(ticks) + partialTicks;
-                    GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
 
                     for(int k1 = k - i1; k1 <= k + i1; ++k1)
                     {
@@ -166,40 +154,27 @@ public class TileRendererGlobeStand extends TileEntitySpecialRenderer<TileEntity
 
                             Random rand = new Random((long)(l1 * l1 * 3121 + l1 * 45238971 ^ k1 * k1 * 418711 + k1 * 13761));
 
-                            if(j1 != 1)
-                            {
-                                j1 = 1;
-                                mc.getTextureManager().bindTexture(txSnow);
-                                bufferbuilder.begin(7, DefaultVertexFormats.PARTICLE_POSITION_TEX_COLOR_LMAP);
-                            }
-
-                            double d8 = (double)(-((float)(mc.world.getWorldTime() & 511) + partialTicks) / 512.0F);
+                            double d8 = (double)(-((float)(ticks & 511) + partialTicks) / 512.0F);
                             double d9 = rand.nextDouble() + (double)f1 * 0.01D * (double)((float)rand.nextGaussian());
                             double d10 = rand.nextDouble() + (double)(f1 * (float)rand.nextGaussian()) * 0.001D;
                             double d11 = (double)((float)l1 + 0.5F);
                             double d12 = (double)((float)k1 + 0.5F);
                             float f6 = MathHelper.sqrt(d11 * d11 + d12 * d12) / (float)i1;
                             float f5 = ((1.0F - f6 * f6) * 0.3F + 0.5F) * f;
-                            bufferbuilder.pos((double)l1 - d3 + 0.5D, (double)l2, (double)k1 - d4 + 0.5D).tex(0.0D + d9, (double)k2 * 0.25D + d8 + d10).color(1.0F, 1.0F, 1.0F, f5).lightmap(j4, k4).endVertex();
-                            bufferbuilder.pos((double)l1 + d3 + 0.5D, (double)l2, (double)k1 + d4 + 0.5D).tex(1.0D + d9, (double)k2 * 0.25D + d8 + d10).color(1.0F, 1.0F, 1.0F, f5).lightmap(j4, k4).endVertex();
-                            bufferbuilder.pos((double)l1 + d3 + 0.5D, (double)k2, (double)k1 + d4 + 0.5D).tex(1.0D + d9, (double)l2 * 0.25D + d8 + d10).color(1.0F, 1.0F, 1.0F, f5).lightmap(j4, k4).endVertex();
-                            bufferbuilder.pos((double)l1 - d3 + 0.5D, (double)k2, (double)k1 - d4 + 0.5D).tex(0.0D + d9, (double)l2 * 0.25D + d8 + d10).color(1.0F, 1.0F, 1.0F, f5).lightmap(j4, k4).endVertex();
+
+                            buffer.pos(matrix4f, (float)(l1 - d3 + 0.5D), (float)l2, (float)(k1 - d4 + 0.5D)).color(1.0F, 1.0F, 1.0F, f5).tex((float)(0.0D + d9), (float)(k2 * 0.25D + d8 + d10)).overlay(combinedOverlayIn).lightmap(j4, k4).normal(0F, 1F, 0F).endVertex();
+                            buffer.pos(matrix4f, (float)(l1 + d3 + 0.5D), (float)l2, (float)(k1 + d4 + 0.5D)).color(1.0F, 1.0F, 1.0F, f5).tex((float)(1.0D + d9), (float)(k2 * 0.25D + d8 + d10)).overlay(combinedOverlayIn).lightmap(j4, k4).normal(0F, 1F, 0F).endVertex();
+                            buffer.pos(matrix4f, (float)(l1 + d3 + 0.5D), (float)k2, (float)(k1 + d4 + 0.5D)).color(1.0F, 1.0F, 1.0F, f5).tex((float)(1.0D + d9), (float)(l2 * 0.25D + d8 + d10)).overlay(combinedOverlayIn).lightmap(j4, k4).normal(0F, 1F, 0F).endVertex();
+                            buffer.pos(matrix4f, (float)(l1 - d3 + 0.5D), (float)k2, (float)(k1 - d4 + 0.5D)).color(1.0F, 1.0F, 1.0F, f5).tex((float)(0.0D + d9), (float)(l2 * 0.25D + d8 + d10)).overlay(combinedOverlayIn).lightmap(j4, k4).normal(0F, 1F, 0F).endVertex();
                         }
                     }
 
-                    if (j1 >= 0)
-                    {
-                        tessellator.draw();
-                    }
-
-                    GlStateManager.popMatrix();
+                    stack.pop();
                 }
 
-                GlStateManager.enableCull();
-                GlStateManager.disableBlend();
-                GlStateManager.alphaFunc(516, 0.1F);
             }
 
+            //TODO holy mother of god cache this omg.
             //render blocks
             for(int x = -radius; x <= radius; x++)
             {
@@ -210,115 +185,142 @@ public class TileRendererGlobeStand extends TileEntitySpecialRenderer<TileEntity
                         StringBuilder sb = new StringBuilder().append("x").append(x).append("y").append(y).append("z").append(z);
                         String coord = sb.toString();
 
-                        if(!gsTag.hasKey(coord))
+                        if(!gsTag.contains(coord))
                         {
                             continue;
                         }
 
-                        NBTTagCompound tag = gsTag.getCompoundTag(coord);
-                        IBlockState state = Block.getBlockFromName(tag.getString("Block")).getStateFromMeta(tag.getByte("Data") & 255);
-                        NBTTagCompound teTag = null;
+                        CompoundNBT tag = gsTag.getCompound(coord);
+                        BlockState state = NBTUtil.readBlockState(tag.getCompound("BlockState"));
+                        CompoundNBT teTag = null;
 
-                        if(tag.hasKey("TileEntityData"))
+                        if(tag.contains("TileEntityData"))
                         {
-                            teTag = tag.getCompoundTag("TileEntityData");
+                            teTag = tag.getCompound("TileEntityData");
                         }
 
-                        GlStateManager.pushMatrix();
-
-                        if(state.getRenderType() != EnumBlockRenderType.INVISIBLE)
+                        if(state.getRenderType() != BlockRenderType.INVISIBLE)
                         {
-                            Minecraft.getMinecraft().getTextureManager().bindTexture(TextureMap.LOCATION_BLOCKS_TEXTURE);
-                            GlStateManager.disableLighting();
-                            Tessellator tessellator = Tessellator.getInstance();
-                            BufferBuilder bufferbuilder = tessellator.getBuffer();
-                            BlockRendererDispatcher blockrendererdispatcher = Minecraft.getMinecraft().getBlockRendererDispatcher();
-                            bufferbuilder.begin(7, DefaultVertexFormats.BLOCK);
-                            if(state.getRenderType() == EnumBlockRenderType.MODEL) //todo fix liquids properly
+                            stack.push();
+                            Minecraft.getInstance().getTextureManager().bindTexture(AtlasTexture.LOCATION_BLOCKS_TEXTURE);
+                            BlockRendererDispatcher blockrendererdispatcher = Minecraft.getInstance().getBlockRendererDispatcher();
+                            if(state.getRenderType() == BlockRenderType.MODEL) //todo fix liquids properly
                             {
-                                GlStateManager.translate((float)(x - (double)gsPos.getX() - 0.5D), (float)(y - (double)gsPos.getY()), (float)(z - (double)gsPos.getZ() - 0.5D));
-                                blockrendererdispatcher.getBlockModelRenderer().renderModel(world, blockrendererdispatcher.getModelForState(state), state, gsPos, bufferbuilder, false, MathHelper.getPositionRandom(BlockPos.fromLong(gsTag.getLong("source"))));
+                                stack.translate((float)(x - 0.5D), (float)(y), (float)(z - 0.5D));
+
+                                for (net.minecraft.client.renderer.RenderType type : net.minecraft.client.renderer.RenderType.getBlockRenderTypes()) {
+                                    if (RenderTypeLookup.canRenderInLayer(state, type)) {
+                                        net.minecraftforge.client.ForgeHooksClient.setRenderLayer(type);
+                                        blockrendererdispatcher.getBlockModelRenderer().renderModel(world, blockrendererdispatcher.getModelForState(state), state, HEAVENS_ABOVE, stack, bufferIn.getBuffer(type), false, new Random(), state.getPositionRandom(BlockPos.fromLong(gsTag.getLong("source"))), combinedOverlayIn);
+                                    }
+                                }
+                                net.minecraftforge.client.ForgeHooksClient.setRenderLayer(null);
                             }
-                            else if(state.getRenderType() == EnumBlockRenderType.LIQUID)
-                            {
-                                GlStateManager.translate((float)(x - (double)gsPos.getX() - 0.5D), (float)(y - (double)gsPos.getY()) + 0.8125F, (float)(z - (double)gsPos.getZ() - 0.5D));
-                                blockrendererdispatcher.renderBlock(state, gsPos, world, bufferbuilder);
-                            }
-                            tessellator.draw();
-                            GlStateManager.enableLighting();
+                            stack.pop();
                         }
                         if(teTag != null)
                         {
-                            TileEntity renderTe = tileEntityMap.get(coord);
-                            if(renderTe == null)
+                            Class<?> clz = null;
+                            try
                             {
-                                TileEntity te = state.getBlock().createTileEntity(world, state);
-                                if(te != null)
+                                TileEntity renderTe = tileEntityMap.get(coord);
+                                if(renderTe == null)
                                 {
-                                    te.setPos(gsPos.add(0, 1, 0)); //todo should I change this?
-                                    te.setWorld(world);//TODO look into setWorldCreate in TileEntity. Use TileEntity.create?
-                                    te.readFromNBT(teTag); //todo this can cause a crash. check ichunutil
-                                    tileEntityMap.put(coord, te);
+                                    TileEntity te = state.getBlock().createTileEntity(state, world);
+                                    if(te != null)
+                                    {
+                                        clz = te.getClass();
 
-                                    renderTe = te;
+                                        te.setWorldAndPos(world, gsPos.add(0, 1, 0));//TODO look into setWorldCreate in TileEntity. Use TileEntity.create?
+                                        te.read(teTag); //todo this can cause a crash. check ichunutil
+                                        tileEntityMap.put(coord, te);
+
+                                        renderTe = te;
+                                    }
+                                }
+                                if(renderTe != null && !classesNotToRender.contains(renderTe.getClass()))
+                                {
+                                    stack.push();
+                                    stack.translate(x - 0.5D, y, z - 0.5D);
+                                    TileEntityRenderer<TileEntity> renderer = TileEntityRendererDispatcher.instance.getRenderer(renderTe);
+                                    if(renderer != null)
+                                    {
+                                        renderer.render(renderTe, partialTicks, stack, bufferIn, combinedLightIn, combinedOverlayIn);
+                                    }
+                                    stack.pop();
                                 }
                             }
-                            if(renderTe != null && !classesNotToRender.contains(renderTe.getClass()))
+                            catch(Throwable e)
                             {
-                                try
+                                if(clz != null)
                                 {
-                                    TileEntityRendererDispatcher.instance.render(renderTe, x - 0.5D, y, z - 0.5D, partialTicks);
+                                    classesNotToRender.add(clz);
                                 }
-                                catch(ReportedException e)
-                                {
-                                    classesNotToRender.add(renderTe.getClass());
-                                    //TODO log... at some point
-                                }
+                                //TODO log... at some point
                             }
                         }
+                        if(false && tag.contains("FluidState"))//TODO fix liquid rendering
+                        {
+                            IFluidState fluidState = TileEntityGlobeCreator.readFluidState(tag.getCompound("FluidState"));
+                            if(!fluidState.isEmpty())
+                            {
+                                stack.push();
+                                Minecraft.getInstance().getTextureManager().bindTexture(AtlasTexture.LOCATION_BLOCKS_TEXTURE);
+                                BlockRendererDispatcher blockrendererdispatcher = Minecraft.getInstance().getBlockRendererDispatcher();
+                                stack.translate((float)(x - 0.5D), (float)(y), (float)(z - 0.5D));
 
-                        GlStateManager.color(1.0F, 1.0F, 1.0F, 1.0F);
-
-                        GlStateManager.popMatrix();
+                                for (RenderType rendertype : RenderType.getBlockRenderTypes())
+                                {
+                                    net.minecraftforge.client.ForgeHooksClient.setRenderLayer(rendertype);
+                                    if(RenderTypeLookup.canRenderInLayer(fluidState, rendertype))
+                                    {
+                                        blockrendererdispatcher.renderFluid(HEAVENS_ABOVE, world, bufferIn.getBuffer(rendertype), fluidState);
+                                    }
+                                }
+                                net.minecraftforge.client.ForgeHooksClient.setRenderLayer(null);
+                                stack.pop();
+                            }
+                        }
                     }
                 }
             }
             //end render blocks
 
             //draw ents
-            int entityCount = gsTag.getInteger("entityCount"); //TODO fix the entity render in GUI changing normalize
+            int entityCount = gsTag.getInt("entityCount"); //TODO fix the entity render in GUI changing normalize
             boolean create = entities.isEmpty();
             if(create && entityCount > 0)
             {
                 for(int i = 0; i < entityCount; i++)
                 {
-                    Entity ent = EntityList.createEntityFromNBT(gsTag.getCompoundTag("ent" + i), world);
-                    if(ent != null)
+                    Optional<Entity> entOpt = EntityType.loadEntityUnchecked(gsTag.getCompound("ent" + i), world);
+                    if(entOpt.isPresent())
                     {
+                        Entity ent = entOpt.get();
                         entities.add(ent);
-                        if(ent instanceof EntityLivingBase)
+                        if(ent instanceof LivingEntity)
                         {
-                            ent.posY += 500D;
+                            ent.setPosition(ent.getPosX(), ent.getPosY() + 500D, ent.getPosZ());
                         }
                         ent.noClip = true;
-                        ent.onUpdate();
-                        if(ent instanceof EntityLivingBase)
+                        ent.tick();
+                        if(ent instanceof LivingEntity)
                         {
-                            ent.posY -= 500D;
+                            ent.setPosition(ent.getPosX(), ent.getPosY() - 500D, ent.getPosZ());
                         }
                     }
                 }
                 if(entities.isEmpty())
                 {
-                    gsTag.setInteger("entityCount", 0);
+                    gsTag.putInt("entityCount", 0);
                 }
             }
-            int playerCount = gsTag.getInteger("playerCount");
+            int playerCount = gsTag.getInt("playerCount");
             if(create && playerCount > 0)
             {
                 for(int i = 0; i < playerCount; i++)
                 {
-                    GameProfile gp = NBTUtil.readGameProfileFromNBT(gsTag.getCompoundTag("player" + i).getCompoundTag("Globe_GamePlofile"));
+                    GameProfile gp = NBTUtil.readGameProfile(gsTag.getCompound("player" + i).getCompound("Globe_GameProfile"));
                     if(gp != null)
                     {
                         Property property = (Property)Iterables.getFirst(gp.getProperties().get("textures"), (Object)null);
@@ -327,111 +329,120 @@ public class TileRendererGlobeStand extends TileEntitySpecialRenderer<TileEntity
                         {
                             if(sessionService == null)
                             {
-                                YggdrasilAuthenticationService yggdrasilauthenticationservice = new YggdrasilAuthenticationService(Minecraft.getMinecraft().getProxy(), UUID.randomUUID().toString());
+                                YggdrasilAuthenticationService yggdrasilauthenticationservice = new YggdrasilAuthenticationService(Minecraft.getInstance().getProxy(), UUID.randomUUID().toString());
                                 sessionService = yggdrasilauthenticationservice.createMinecraftSessionService();
                             }
                             gp = sessionService.fillProfileProperties(gp, true);
                         }
 
-                        if(Minecraft.getMinecraft().getConnection().getPlayerInfo(gp.getId()) == null)
+                        if(Minecraft.getInstance().getConnection().getPlayerInfo(gp.getId()) == null)
                         {
-                            NetworkPlayerInfo info = new NetworkPlayerInfo(gp);
+                            PacketBuffer buf = new PacketBuffer(Unpooled.buffer());
+                            //taken from SPlayerListItemPacket
+                            buf.writeEnumValue(SPlayerListItemPacket.Action.ADD_PLAYER);
+                            buf.writeVarInt(1);
+                            buf.writeUniqueId(gp.getId());
+                            buf.writeString(gp.getName());
+                            buf.writeVarInt(gp.getProperties().size());
+                            for(Property property1 : gp.getProperties().values()) {
+                                buf.writeString(property1.getName());
+                                buf.writeString(property1.getValue());
+                                if (property1.hasSignature()) {
+                                    buf.writeBoolean(true);
+                                    buf.writeString(property1.getSignature());
+                                } else {
+                                    buf.writeBoolean(false);
+                                }
+                            }
+
+                            buf.writeVarInt(GameType.NOT_SET.getID());
+                            buf.writeVarInt(-1);
+                            buf.writeBoolean(false);
+
+                            SPlayerListItemPacket packet = new SPlayerListItemPacket();
+
                             try
                             {
-                                Method method = NetworkPlayerInfo.class.getDeclaredMethod("func_178838_a", int.class);
-                                method.setAccessible(true);
-                                method.invoke(info, -100);
+                                packet.readPacketData(buf);
+                                NetworkPlayerInfo info = new NetworkPlayerInfo(packet.getEntries().get(0));
+                                ObfuscationReflectionHelper.findMethod(NetworkPlayerInfo.class, "func_178838_a", int.class).invoke(info, -100);
+                                EventHandlerClient.getMcPlayerInfoMap().put(gp.getId(), info);
                             }
-                            catch(NoSuchMethodException | IllegalAccessException | InvocationTargetException ignored) //TODO ew reflection
+                            catch(ObfuscationReflectionHelper.UnableToFindMethodException | IllegalAccessException | InvocationTargetException | IOException e)
                             {
-                                try
-                                {
-                                    Method method = NetworkPlayerInfo.class.getDeclaredMethod("setResponseTime", int.class);
-                                    method.setAccessible(true);
-                                    method.invoke(info, -100);
-                                }
-                                catch(NoSuchMethodException | IllegalAccessException | InvocationTargetException ignored1){}
+                                e.printStackTrace();
                             }
-                            EventHandlerClient.getMcPlayerInfoMap().put(gp.getId(), info);
                         }
-                        EntityOtherPlayerMP mp = new EntityOtherPlayerMP(world, gp);
-                        mp.readFromNBT(gsTag.getCompoundTag("player" + i));
-                        mp.posY += 500D;
-                        mp.onUpdate();
-                        mp.posY -= 500D;
+                        RemoteClientPlayerEntity mp = new RemoteClientPlayerEntity((ClientWorld)world, gp);
+                        mp.read(gsTag.getCompound("player" + i));
+                        mp.setPosition(mp.getPosX(), mp.getPosY() + 500D, mp.getPosZ());
+                        mp.tick();
+                        mp.setPosition(mp.getPosX(), mp.getPosY() - 500D, mp.getPosZ());
                         entities.add(mp);
                     }
                 }
             }
             for(Entity ent : entities)
             {
-                GlStateManager.pushMatrix();
+                stack.push();
 
-                BlockPos source = BlockPos.fromLong(gsTag.getLong("source")).equals(BlockPos.ORIGIN) ? gsPos : BlockPos.fromLong(gsTag.getLong("source"));
+                BlockPos source = BlockPos.fromLong(gsTag.getLong("source")).equals(BlockPos.ZERO) ? gsPos : BlockPos.fromLong(gsTag.getLong("source"));
 
-                GlStateManager.translate(ent.posX - source.getX() - 0.5D, ent.posY - source.getY(), ent.posZ - source.getZ() - 0.5D);
+                stack.translate(ent.getPosX() - source.getX() - 0.5D, ent.getPosY() - source.getY(), ent.getPosZ() - source.getZ() - 0.5D);
 
-                Render render = Minecraft.getMinecraft().getRenderManager().getEntityRenderObject(ent);
+                EntityRenderer render = Minecraft.getInstance().getRenderManager().getRenderer(ent);
+                stack.push();
                 try
                 {
-                    float oriY = Minecraft.getMinecraft().getRenderManager().playerViewY;
-                    Minecraft.getMinecraft().getRenderManager().playerViewY += rotation;
-                    render.doRender(ent, 0D, 0D, 0D, ent.rotationYaw, partialTicks);
-                    Minecraft.getMinecraft().getRenderManager().playerViewY = oriY;
+                    render.render(ent, ent.rotationYaw, partialTicks, stack, bufferIn, combinedLightIn);
                 }
-                catch(Exception ignored){}
+                catch(Throwable ignored){}
+                stack.pop();
 
-                GlStateManager.popMatrix();
+                stack.pop();
             }
-            OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, 240F, 240F);
-            GlStateManager.color(1F, 1F, 1F, 1F);
 
             //end draw ents
 
-            GlStateManager.popMatrix();
+            stack.pop();
 
             renderLevel--;
         }
 
         //draw globe
-        GlStateManager.pushMatrix();
+        stack.push();
 
-        GlStateManager.translate(0F, -0.275F, 0F);
+        stack.translate(0F, -0.275F, 0F);
 
         float scale = 0.4F;
-        GlStateManager.scale(scale, scale, scale);
+        stack.scale(scale, scale, scale);
 
         //draw base
         if(drawBase)
         {
-            Minecraft.getMinecraft().getTextureManager().bindTexture(txGlobeStand);
-            modelGlobeStand.render(0.0625F);
+            modelGlobeStand.render(stack, bufferIn.getBuffer(RenderType.getEntityCutout(txGlobeStand)), combinedLightIn, combinedOverlayIn, 1F, 1F, 1F, 1F);
         }
         //end draw base
 
         //Draw glass
         if(drawGlass)
         {
-            GlStateManager.enableBlend();
-            GlStateManager.tryBlendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
-
-            Minecraft.getMinecraft().getTextureManager().bindTexture(TextureMap.LOCATION_BLOCKS_TEXTURE);
-            GlStateManager.disableLighting();
-            Tessellator tessellator = Tessellator.getInstance();
-            BufferBuilder bufferbuilder = tessellator.getBuffer();
-
-            bufferbuilder.begin(7, DefaultVertexFormats.BLOCK);
-            GlStateManager.translate((float)(-(double)gsPos.getX() - 0.5D), (float)(-(double)gsPos.getY()) + 0.3D, (float)(-(double)gsPos.getZ() - 0.5D));
-            IBlockState glass = gsTag != null && gsTag.hasKey("glassType") ? Blocks.STAINED_GLASS.getStateFromMeta(gsTag.getInteger("glassType")) : Blocks.GLASS.getDefaultState();
-            BlockRendererDispatcher blockrendererdispatcher = Minecraft.getMinecraft().getBlockRendererDispatcher();
-            blockrendererdispatcher.getBlockModelRenderer().renderModel(world, blockrendererdispatcher.getModelForState(glass), glass, gsPos, bufferbuilder, false, MathHelper.getPositionRandom(BlockPos.ORIGIN));
-            tessellator.draw();
-
-            GlStateManager.enableLighting();
+            Minecraft.getInstance().getTextureManager().bindTexture(AtlasTexture.LOCATION_BLOCKS_TEXTURE);
+            stack.translate((float)(-0.5D), (float)(+ 0.3D), (float)(-0.5D));
+            Block block = gsTag != null && gsTag.contains("glassType") ? ForgeRegistries.BLOCKS.getValue(new ResourceLocation(gsTag.getString("glassType"))) : null;
+            BlockState glass = block != null ? block.getDefaultState() : Blocks.GLASS.getDefaultState();
+            BlockRendererDispatcher blockrendererdispatcher = Minecraft.getInstance().getBlockRendererDispatcher();
+            for (net.minecraft.client.renderer.RenderType type : net.minecraft.client.renderer.RenderType.getBlockRenderTypes()) {
+                if (RenderTypeLookup.canRenderInLayer(glass, type)) {
+                    net.minecraftforge.client.ForgeHooksClient.setRenderLayer(type);
+                    blockrendererdispatcher.getBlockModelRenderer().renderModel(world, blockrendererdispatcher.getModelForState(glass), glass, HEAVENS_ABOVE, stack, bufferIn.getBuffer(type), false, new Random(), glass.getPositionRandom(HEAVENS_ABOVE), combinedOverlayIn);
+                }
+            }
+            net.minecraftforge.client.ForgeHooksClient.setRenderLayer(null);
         }
         //end draw glass
 
 
-        GlStateManager.popMatrix();
+        stack.pop();
     }
 }

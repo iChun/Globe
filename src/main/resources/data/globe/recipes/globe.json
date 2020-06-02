@@ -1,23 +1,25 @@
 {
   "type": "minecraft:crafting_shaped",
   "pattern": [
-    "CIC",
-    "R R",
+    "GGG",
+    "GBG",
     "CIC"
   ],
   "key": {
-    "R": {
-      "item": "minecraft:redstone_block"
+    "G": {
+      "item": "minecraft:glass"
+    },
+    "B": {
+      "item": "minecraft:beacon"
     },
     "C": {
-      "item": "minecraft:concrete",
-      "data": 15
+      "item": "minecraft:black_concrete"
     },
     "I": {
       "item": "minecraft:iron_block"
     }
   },
   "result": {
-    "item": "globe:globe_creator"
+    "item": "globe:globe"
   }
 }

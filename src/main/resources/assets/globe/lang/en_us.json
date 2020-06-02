@@ -1,0 +1,12 @@
+{
+  "globe.block.globeCreator": "Globe Creator",
+  "globe.block.globeStand": "Globe Stand",
+
+  "globe.item.globe_empty": "Globe (Empty)",
+  "globe.item.globe": "Globe",
+
+  "subtitles.globe.chargeup": "Globe process starting",
+  "subtitles.globe.ding": "Globe process completed",
+
+  "death.attack.globe.globeProcess": "%s was sucked into a globe"
+}

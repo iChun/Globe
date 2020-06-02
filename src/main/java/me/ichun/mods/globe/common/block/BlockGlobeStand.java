@@ -1,69 +1,81 @@
 package me.ichun.mods.globe.common.block;
 
 import me.ichun.mods.globe.common.Globe;
-import me.ichun.mods.globe.common.tileentity.TileEntityGlobeCreator;
 import me.ichun.mods.globe.common.tileentity.TileEntityGlobeStand;
-import net.minecraft.block.Block;
-import net.minecraft.block.ITileEntityProvider;
+import net.minecraft.block.*;
 import net.minecraft.block.material.Material;
-import net.minecraft.block.state.BlockFaceShape;
-import net.minecraft.block.state.IBlockState;
-import net.minecraft.creativetab.CreativeTabs;
-import net.minecraft.entity.player.EntityPlayer;
-import net.minecraft.init.Blocks;
-import net.minecraft.item.ItemBlock;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.fluid.Fluids;
+import net.minecraft.fluid.IFluidState;
+import net.minecraft.item.BlockItem;
+import net.minecraft.item.BlockItemUseContext;
 import net.minecraft.item.ItemStack;
+import net.minecraft.state.BooleanProperty;
+import net.minecraft.state.StateContainer;
+import net.minecraft.state.properties.BlockStateProperties;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.*;
-import net.minecraft.util.math.AxisAlignedBB;
+import net.minecraft.util.ActionResultType;
+import net.minecraft.util.Direction;
+import net.minecraft.util.Hand;
+import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.BlockRayTraceResult;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RayTraceResult;
-import net.minecraft.world.IBlockAccess;
+import net.minecraft.util.math.shapes.ISelectionContext;
+import net.minecraft.util.math.shapes.VoxelShape;
+import net.minecraft.util.math.shapes.VoxelShapes;
+import net.minecraft.world.IBlockReader;
+import net.minecraft.world.IWorld;
+import net.minecraft.world.IWorldReader;
 import net.minecraft.world.World;
+import net.minecraft.world.storage.loot.LootContext;
+import net.minecraft.world.storage.loot.LootParameters;
 
 import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.List;
 
-import static net.minecraft.util.EnumFacing.Axis.X;
-import static net.minecraft.util.EnumFacing.Axis.Z;
+import static net.minecraft.util.Direction.Axis.X;
+import static net.minecraft.util.Direction.Axis.Z;
 
-public class BlockGlobeStand extends Block implements ITileEntityProvider
+public class BlockGlobeStand extends Block implements IWaterLoggable
 {
-    public static final AxisAlignedBB GLOBE_AABB = new AxisAlignedBB(0.25D, 0.0D, 0.25D, 0.75D, 0.5D, 0.75D);
-    public static final AxisAlignedBB STAND_AABB = new AxisAlignedBB(0.1875D, 0.0D, 0.1875D, 0.8125D, 0.125D, 0.8125D);
-    public static final AxisAlignedBB STAND_AND_GLOBE_AABB = new AxisAlignedBB(0.25D, 0.0D, 0.25D, 0.75D, 0.9D, 0.75D);
+    public static final ResourceLocation GLASS_TAG = new ResourceLocation("forge", "glass");
+    public static final BooleanProperty WATERLOGGED = BlockStateProperties.WATERLOGGED;
+
+    public static final VoxelShape GLOBE_AABB = Block.makeCuboidShape(4D, 0.0D, 4D, 12D, 8D, 12D);
+    public static final VoxelShape STAND_AABB = Block.makeCuboidShape(3D, 0.0D, 3D, 13D, 2D, 13D);
+    public static final VoxelShape STAND_AND_GLOBE_AABB = Block.makeCuboidShape(4D, 0.0D, 4D, 12D, 14.4D, 12D);
 
     public BlockGlobeStand()
     {
-        super(Material.IRON);
-        setHardness(5.0F);
-        setResistance(10.0F);
-        setRegistryName(new ResourceLocation("globe", "globe_stand"));
-        setUnlocalizedName("globe.block.globeStand");
-        setCreativeTab(CreativeTabs.DECORATIONS);
+        super(Block.Properties.create(Material.IRON).notSolid().hardnessAndResistance(5F, 10F).sound(SoundType.METAL));
+        this.setDefaultState(this.stateContainer.getBaseState().with(WATERLOGGED, Boolean.FALSE));
+    }
+
+    @Override
+    public String getTranslationKey()
+    {
+        return "globe.block.globeStand";
+    }
+
+
+    @Override
+    public boolean hasTileEntity(BlockState state)
+    {
+        return true;
     }
 
     @Nullable
     @Override
-    public TileEntity createNewTileEntity(World worldIn, int meta)
+    public TileEntity createTileEntity(BlockState state, IBlockReader world)
     {
         return new TileEntityGlobeStand(null, true);
     }
 
     @Override
-    public boolean isFullCube(IBlockState state)
-    {
-        return false;
-    }
-
-    @Override
-    public boolean isOpaqueCube(IBlockState state)
-    {
-        return false;
-    }
-
-    @Override
-    public AxisAlignedBB getBoundingBox(IBlockState state, IBlockAccess worldIn, BlockPos pos)
+    public VoxelShape getShape(BlockState state, IBlockReader worldIn, BlockPos pos, ISelectionContext context)
     {
         TileEntity te = worldIn.getTileEntity(pos);
         if(te instanceof TileEntityGlobeStand)
@@ -82,12 +94,11 @@ public class BlockGlobeStand extends Block implements ITileEntityProvider
                 return STAND_AND_GLOBE_AABB;
             }
         }
-        return FULL_BLOCK_AABB;
+        return super.getShape(state, worldIn, pos, context);
     }
 
     @Override
-    @Nullable
-    public AxisAlignedBB getCollisionBoundingBox(IBlockState blockState, IBlockAccess worldIn, BlockPos pos)
+    public VoxelShape getCollisionShape(BlockState state, IBlockReader worldIn, BlockPos pos, ISelectionContext context)
     {
         TileEntity te = worldIn.getTileEntity(pos);
         if(te instanceof TileEntityGlobeStand)
@@ -106,13 +117,13 @@ public class BlockGlobeStand extends Block implements ITileEntityProvider
                 return STAND_AND_GLOBE_AABB;
             }
         }
-        return null;
+        return VoxelShapes.empty();
     }
 
     @Override
-    public void onBlockClicked(World world, BlockPos pos, EntityPlayer player)
+    public void onBlockClicked(BlockState state, World world, BlockPos pos, PlayerEntity player)
     {
-        if(player.capabilities.isCreativeMode)
+        if(player.abilities.isCreativeMode)
         {
             return;
         }
@@ -122,22 +133,23 @@ public class BlockGlobeStand extends Block implements ITileEntityProvider
             TileEntityGlobeStand gc = (TileEntityGlobeStand)te;
             if(gc.itemTag != null)
             {
-                ItemStack is = gc.itemTag.hasNoTags() ? new ItemStack(Globe.itemGlobe, 1, 0) : new ItemStack(Globe.itemGlobe, 1, 1);
-                if(!gc.itemTag.hasNoTags())
+                ItemStack is = new ItemStack(Globe.Items.GLOBE.get(), 1);
+                if(!gc.itemTag.isEmpty())
                 {
-                    is.setTagCompound(gc.itemTag);
+                    is.setTag(gc.itemTag);
+                    is.setDamage(1);
                 }
                 if(player.inventory.addItemStackToInventory(is))
                 {
                     gc.itemTag = null;
                     if(gc.isStand)
                     {
-                        IBlockState state = world.getBlockState(pos);
+                        //                        BlockState state = world.getBlockState(pos);
                         world.notifyBlockUpdate(pos, state, state, 3);
                     }
                     else
                     {
-                        world.setBlockToAir(pos);
+                        world.removeBlock(pos, false);
                     }
                 }
             }
@@ -145,7 +157,7 @@ public class BlockGlobeStand extends Block implements ITileEntityProvider
     }
 
     @Override
-    public int getLightValue(IBlockState state, IBlockAccess world, BlockPos pos)
+    public int getLightValue(BlockState state, IBlockReader world, BlockPos pos)
     {
         TileEntity te = world.getTileEntity(pos);
         if(te instanceof TileEntityGlobeStand)
@@ -160,22 +172,16 @@ public class BlockGlobeStand extends Block implements ITileEntityProvider
     }
 
     @Override
-    public BlockFaceShape getBlockFaceShape(IBlockAccess worldIn, IBlockState state, BlockPos pos, EnumFacing face)
-    {
-        return BlockFaceShape.UNDEFINED;
-    }
-
-    @Override
-    public boolean removedByPlayer(IBlockState state, World world, BlockPos pos, EntityPlayer player, boolean willHarvest)
+    public boolean removedByPlayer(BlockState state, World world, BlockPos pos, PlayerEntity player, boolean willHarvest, IFluidState fluid)
     {
         this.onBlockHarvested(world, pos, state, player);
-        boolean flag = world.setBlockState(pos, net.minecraft.init.Blocks.AIR.getDefaultState(), world.isRemote ? 11 : 3);
-        world.checkLight(pos); //hacky light fix
+        boolean flag = world.setBlockState(pos, fluid.getBlockState(), world.isRemote ? 11 : 3);
+        world.getChunkProvider().getLightManager().checkBlock(pos); //hacky light fix
         return flag;
     }
 
     @Override
-    public boolean onBlockActivated(World world, BlockPos pos, IBlockState state, EntityPlayer playerIn, EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ)
+    public ActionResultType onBlockActivated(BlockState state, World world, BlockPos pos, PlayerEntity playerIn, Hand hand, BlockRayTraceResult hit)
     {
         TileEntity te = world.getTileEntity(pos);
         if(te instanceof TileEntityGlobeStand)
@@ -186,19 +192,12 @@ public class BlockGlobeStand extends Block implements ITileEntityProvider
                 gs.snowTime = 200;
                 boolean flag = false;
                 ItemStack is = playerIn.getHeldItem(hand);
-                if(is.getItem() instanceof ItemBlock)
+                if(is.getItem() instanceof BlockItem)
                 {
-                    Block block = ((ItemBlock)is.getItem()).getBlock();
-                    if(block == Blocks.GLASS || block == Blocks.STAINED_GLASS)
+                    Block block = ((BlockItem)is.getItem()).getBlock();
+                    if(block.getTags().contains(GLASS_TAG))
                     {
-                        if(block == Blocks.GLASS)
-                        {
-                            gs.itemTag.removeTag("glassType");
-                        }
-                        else
-                        {
-                            gs.itemTag.setInteger("glassType", is.getItemDamage());
-                        }
+                        gs.itemTag.putString("glassType", block.getRegistryName().toString());
                         world.notifyBlockUpdate(pos, state, state, 3);
 
                         flag = true;
@@ -218,18 +217,18 @@ public class BlockGlobeStand extends Block implements ITileEntityProvider
                     gs.rubberbandX = x;
                     gs.rubberbandZ = z;
 
-                    if(facing.getAxis() == Z)
+                    if(hit.getFace().getAxis() == Z)
                     {
-                        float rot = (float)(hitX - 0.5D) * facing.getFrontOffsetZ() * 10F;
+                        float rot = (float)(hit.getHitVec().x - 0.5D - pos.getX()) * hit.getFace().getZOffset() * 10F;
                         if(rot < 0 && gs.rotateFactor > 0 || rot > 0 && gs.rotateFactor < 0)
                         {
                             gs.rotateFactor *= 0.7F;
                         }
                         gs.rotateFactor += rot;
                     }
-                    else if(facing.getAxis() == X)
+                    else if(hit.getFace().getAxis() == X)
                     {
-                        float rot = (float)(hitZ - 0.5D) * -facing.getFrontOffsetX() * 10F;
+                        float rot = (float)(hit.getHitVec().z - 0.5D - pos.getZ()) * -hit.getFace().getXOffset() * 10F;
                         if(rot < 0 && gs.rotateFactor > 0 || rot > 0 && gs.rotateFactor < 0)
                         {
                             gs.rotateFactor *= 0.7F;
@@ -242,14 +241,14 @@ public class BlockGlobeStand extends Block implements ITileEntityProvider
                     }
                     flag = true;
                 }
-                return true;
+                return flag ? ActionResultType.SUCCESS : ActionResultType.PASS;
             }
         }
-        return false;
+        return ActionResultType.PASS;
     }
 
     @Override
-    public ItemStack getPickBlock(IBlockState state, RayTraceResult target, World world, BlockPos pos, EntityPlayer player)
+    public ItemStack getPickBlock(BlockState state, RayTraceResult target, IBlockReader world, BlockPos pos, PlayerEntity player)
     {
         TileEntity te = world.getTileEntity(pos);
         if(te instanceof TileEntityGlobeStand)
@@ -257,10 +256,11 @@ public class BlockGlobeStand extends Block implements ITileEntityProvider
             TileEntityGlobeStand gs = (TileEntityGlobeStand)te;
             if(gs.itemTag != null)
             {
-                ItemStack is = new ItemStack(Globe.itemGlobe, 1, gs.itemTag.hasNoTags() ? 0 : 1);
-                if(!gs.itemTag.hasNoTags())
+                ItemStack is = new ItemStack(Globe.Items.GLOBE.get(), 1);
+                if(!gs.itemTag.isEmpty())
                 {
-                    is.setTagCompound(gs.itemTag);
+                    is.setTag(gs.itemTag);
+                    is.setDamage(1);
                 }
                 return is;
             }
@@ -269,55 +269,78 @@ public class BlockGlobeStand extends Block implements ITileEntityProvider
     }
 
     @Override
-    public void neighborChanged(IBlockState state, World worldIn, BlockPos pos, Block blockIn, BlockPos fromPos)
-    {
-        if(!canPlaceBlockAt(worldIn, pos))
-        {
-            dropBlockAsItem(worldIn, pos, state, 0);
-            worldIn.setBlockToAir(pos);
-        }
+    public boolean isValidPosition(BlockState state, IWorldReader worldIn, BlockPos pos) {
+        return hasSolidSideOnTop(worldIn, pos.down());
     }
 
     @Override
-    public void getDrops(NonNullList<ItemStack> drops, IBlockAccess world, BlockPos pos, IBlockState state, int fortune)
+    public BlockState updatePostPlacement(BlockState stateIn, Direction facing, BlockState facingState, IWorld worldIn, BlockPos currentPos, BlockPos facingPos) {
+        if (facing == Direction.DOWN && !stateIn.isValidPosition(worldIn, currentPos)) {
+            return Blocks.AIR.getDefaultState();
+        } else {
+            if (stateIn.get(WATERLOGGED)) {
+                worldIn.getPendingFluidTicks().scheduleTick(currentPos, Fluids.WATER, Fluids.WATER.getTickRate(worldIn));
+            }
+
+            return super.updatePostPlacement(stateIn, facing, facingState, worldIn, currentPos, facingPos);
+        }
+    }
+
+    @Nullable
+    @Override
+    public BlockState getStateForPlacement(BlockItemUseContext context)
     {
-        TileEntity te = world.getTileEntity(pos);
-        if(te instanceof TileEntityGlobeStand)
+        BlockState blockstate1 = this.getDefaultState();
+        IWorldReader iworldreader = context.getWorld();
+        BlockPos blockpos = context.getPos();
+        IFluidState ifluidstate = context.getWorld().getFluidState(context.getPos());
+
+        if (blockstate1.isValidPosition(iworldreader, blockpos)) {
+            return blockstate1.with(WATERLOGGED, ifluidstate.getFluid() == Fluids.WATER);
+        }
+
+        return null;
+    }
+
+    @Override
+    protected void fillStateContainer(StateContainer.Builder<Block, BlockState> builder) {
+        builder.add(WATERLOGGED);
+    }
+
+    @Override
+    public IFluidState getFluidState(BlockState state) {
+        return state.get(WATERLOGGED) ? Fluids.WATER.getStillFluidState(false) : super.getFluidState(state);
+    }
+
+    @Override
+    public List<ItemStack> getDrops(BlockState state, LootContext.Builder builder)
+    {
+        List<ItemStack> drops = new ArrayList<>(super.getDrops(state, builder));
+        TileEntity te = builder.get(LootParameters.BLOCK_ENTITY);
+        if (te instanceof TileEntityGlobeStand)
         {
             TileEntityGlobeStand gs = (TileEntityGlobeStand)te;
             if(gs.isStand)
             {
-                drops.add(new ItemStack(Globe.blockGlobeStand, 1));
+                drops.add(new ItemStack(Globe.Blocks.GLOBE_STAND.get(), 1));
             }
             if(gs.itemTag != null)
             {
-                ItemStack is = new ItemStack(Globe.itemGlobe, 1, gs.itemTag.hasNoTags() ? 0 : 1);
-                if(!gs.itemTag.hasNoTags())
+                ItemStack is = new ItemStack(Globe.Items.GLOBE.get(), 1);
+                if(!gs.itemTag.isEmpty())
                 {
-                    is.setTagCompound(gs.itemTag);
+                    is.setTag(gs.itemTag);
+                    is.setDamage(1);
                 }
                 drops.add(is);
             }
         }
+        return drops;
     }
 
     @Override
-    public void breakBlock(World worldIn, BlockPos pos, IBlockState state)
+    public BlockRenderType getRenderType(BlockState state)
     {
-        super.breakBlock(worldIn, pos, state);
-        worldIn.removeTileEntity(pos);
+        return BlockRenderType.ENTITYBLOCK_ANIMATED;
     }
-
-    @Override
-    public boolean canPlaceBlockAt(World worldIn, BlockPos pos)
-    {
-        return worldIn.getBlockState(pos.down()).isSideSolid(worldIn, pos, EnumFacing.UP) || worldIn.getBlockState(pos.down()).getBlock() == Blocks.GLOWSTONE || worldIn.getBlockState(pos.down()).getBlock() == Blocks.GLASS || worldIn.getBlockState(pos.down()).getBlock() == Blocks.STAINED_GLASS;
-    }
-
-    @Override
-    public EnumBlockRenderType getRenderType(IBlockState state)
-    {
-        return EnumBlockRenderType.ENTITYBLOCK_ANIMATED;
-    }
-
 }

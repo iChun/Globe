@@ -10,8 +10,7 @@
       "item": "minecraft:redstone_torch"
     },
     "C": {
-      "item": "minecraft:concrete",
-      "data": 15
+      "item": "minecraft:black_concrete"
     },
     "I": {
       "item": "minecraft:iron_block"
