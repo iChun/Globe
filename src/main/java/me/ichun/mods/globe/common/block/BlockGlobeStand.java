@@ -195,7 +195,7 @@ public class BlockGlobeStand extends Block implements IWaterLoggable
                 if(is.getItem() instanceof BlockItem)
                 {
                     Block block = ((BlockItem)is.getItem()).getBlock();
-                    if(block.getTags().contains(GLASS_TAG))
+                    if(block.getTags().contains(GLASS_TAG)) //TODO test this
                     {
                         gs.itemTag.putString("glassType", block.getRegistryName().toString());
                         world.notifyBlockUpdate(pos, state, state, 3);
