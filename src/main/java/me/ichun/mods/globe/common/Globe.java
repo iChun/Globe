@@ -60,7 +60,7 @@ public class Globe
 
     public static class Blocks
     {
-        private static final DeferredRegister<Block> REGISTRY = new DeferredRegister<>(ForgeRegistries.BLOCKS, MOD_ID);
+        private static final DeferredRegister<Block> REGISTRY = DeferredRegister.create(ForgeRegistries.BLOCKS, MOD_ID);
 
         public static final RegistryObject<BlockGlobeCreator> GLOBE_CREATOR = REGISTRY.register("globe_creator", BlockGlobeCreator::new);
         public static final RegistryObject<BlockGlobeStand> GLOBE_STAND = REGISTRY.register("globe_stand", BlockGlobeStand::new);
@@ -68,7 +68,7 @@ public class Globe
 
     public static class Items
     {
-        private static final DeferredRegister<Item> REGISTRY = new DeferredRegister<>(ForgeRegistries.ITEMS, MOD_ID);
+        private static final DeferredRegister<Item> REGISTRY = DeferredRegister.create(ForgeRegistries.ITEMS, MOD_ID);
 
         public static final RegistryObject<ItemGlobe> GLOBE = REGISTRY.register("globe", () -> new ItemGlobe(DistExecutor.runForDist(() -> () -> attachISTER(new Item.Properties().maxDamage(0).group(ItemGroup.DECORATIONS)), () -> () -> new Item.Properties().maxDamage(0).group(ItemGroup.DECORATIONS))));
 
@@ -84,7 +84,7 @@ public class Globe
 
     public static class Sounds
     {
-        private static final DeferredRegister<SoundEvent> REGISTRY = new DeferredRegister<>(ForgeRegistries.SOUND_EVENTS, MOD_ID); //.setRegistryName(new ResourceLocation("torched", "rpt") ??
+        private static final DeferredRegister<SoundEvent> REGISTRY = DeferredRegister.create(ForgeRegistries.SOUND_EVENTS, MOD_ID); //.setRegistryName(new ResourceLocation("torched", "rpt") ??
 
         public static final RegistryObject<SoundEvent> CHARGEUP = REGISTRY.register("chargeup", () -> new SoundEvent(new ResourceLocation("globe", "chargeup")));
         public static final RegistryObject<SoundEvent> DING = REGISTRY.register("ding", () -> new SoundEvent(new ResourceLocation("globe", "ding")));
@@ -92,7 +92,7 @@ public class Globe
 
     public static class TileEntityTypes
     {
-        private static final DeferredRegister<TileEntityType<?>> REGISTRY = new DeferredRegister<>(ForgeRegistries.TILE_ENTITIES, MOD_ID);
+        private static final DeferredRegister<TileEntityType<?>> REGISTRY = DeferredRegister.create(ForgeRegistries.TILE_ENTITIES, MOD_ID);
 
         public static final RegistryObject<TileEntityType<TileEntityGlobeCreator>> GLOBE_CREATOR = REGISTRY.register("globe_creator", () -> TileEntityType.Builder.create(TileEntityGlobeCreator::new, Blocks.GLOBE_CREATOR.get()).build(null));
         public static final RegistryObject<TileEntityType<TileEntityGlobeStand>> GLOBE_STAND = REGISTRY.register("globe_stand", () -> TileEntityType.Builder.create(TileEntityGlobeStand::new, Blocks.GLOBE_STAND.get()).build(null));
